@@ -75,8 +75,7 @@ contract MyTokenIsERC20 is
     /**
      * @dev 最大总供应量：10 亿枚，按 6 位小数计量
      *      即 1_000_000_000 * 10^6 = 1e15（最小单位）
-     * @notice 注意：当前未 override decimals()，OpenZeppelin ERC20 默认 decimals()=18；
-     *         tokenDecimals() 返回 6，二者不一致，使用前需确认是否要 override decimals()
+     * @notice 已 override decimals() 为 6，与 MaxTotalSupply 计量一致
      */
     uint256 private constant MaxTotalSupply = 1_000_000_000 * 10 ** 6;
 
