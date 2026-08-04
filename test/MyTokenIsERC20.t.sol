@@ -75,7 +75,7 @@ contract MyTokenIsERC20Test is Test {
         emit SetManager(newManager, manager);
 
         vm.prank(owner);
-        token.setManager(newManager);
+        token.setManagerByOwner(newManager);
 
         assertEq(token.manager(), newManager);
     }
@@ -83,13 +83,13 @@ contract MyTokenIsERC20Test is Test {
     function test_SetManager_RevertsWhenCallerIsNotOwner() public {
         vm.prank(other);
         vm.expectRevert();
-        token.setManager(other);
+        token.setManagerByOwner(other);
     }
 
     function test_SetManager_AllowsZeroAddress() public {
         // 合约当前允许设为零地址；仅验证行为与文档一致
         vm.prank(owner);
-        token.setManager(address(0));
+        token.setManagerByOwner(address(0));
         assertEq(token.manager(), address(0));
     }
 
@@ -101,7 +101,7 @@ contract MyTokenIsERC20Test is Test {
         MyTokenIsERC20.MyTokenIsERC20Pool memory pools = _validPools();
 
         vm.prank(owner);
-        token.setPoolAddress(pools);
+        token.setPoolAddressByOwner(pools);
 
         (
             address mining,
@@ -120,7 +120,7 @@ contract MyTokenIsERC20Test is Test {
 
     function test_SetPoolAddress_CanUpdateBeforeAllocation() public {
         vm.startPrank(owner);
-        token.setPoolAddress(_validPools());
+        token.setPoolAddressByOwner(_validPools());
 
         address newMining = makeAddr("newMining");
         MyTokenIsERC20.MyTokenIsERC20Pool memory updated = MyTokenIsERC20.MyTokenIsERC20Pool({
@@ -130,7 +130,7 @@ contract MyTokenIsERC20Test is Test {
             ecosystemPool: ecosystemPool,
             foundationPool: foundationPool
         });
-        token.setPoolAddress(updated);
+        token.setPoolAddressByOwner(updated);
         vm.stopPrank();
 
         (address mining,,,,) = token.myTokenIsERC20Pool();
@@ -140,7 +140,7 @@ contract MyTokenIsERC20Test is Test {
     function test_SetPoolAddress_RevertsWhenCallerIsNotOwner() public {
         vm.prank(other);
         vm.expectRevert();
-        token.setPoolAddress(_validPools());
+        token.setPoolAddressByOwner(_validPools());
     }
 
     function test_SetPoolAddress_RevertsWhenMiningPoolIsZero() public {
@@ -149,7 +149,7 @@ contract MyTokenIsERC20Test is Test {
 
         vm.prank(owner);
         vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing MiningPool address");
-        token.setPoolAddress(pools);
+        token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsWhenDirectSalePoolIsZero() public {
@@ -158,7 +158,7 @@ contract MyTokenIsERC20Test is Test {
 
         vm.prank(owner);
         vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing DirectSalePool address");
-        token.setPoolAddress(pools);
+        token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsWhenInvestorSalePoolIsZero() public {
@@ -167,7 +167,7 @@ contract MyTokenIsERC20Test is Test {
 
         vm.prank(owner);
         vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing InvestorSalePool address");
-        token.setPoolAddress(pools);
+        token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsWhenEcosystemPoolIsZero() public {
@@ -176,7 +176,7 @@ contract MyTokenIsERC20Test is Test {
 
         vm.prank(owner);
         vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing EcosystemPool address");
-        token.setPoolAddress(pools);
+        token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsWhenFoundationPoolIsZero() public {
@@ -185,7 +185,7 @@ contract MyTokenIsERC20Test is Test {
 
         vm.prank(owner);
         vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing FoundationPool address");
-        token.setPoolAddress(pools);
+        token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsAfterAllocation() public {
@@ -193,7 +193,7 @@ contract MyTokenIsERC20Test is Test {
 
         vm.prank(owner);
         vm.expectRevert("MyTokenIsERC20 _beforeAllocation : OHANA is already allocate");
-        token.setPoolAddress(_validPools());
+        token.setPoolAddressByOwner(_validPools());
     }
 
     // =============================================================
@@ -232,21 +232,21 @@ contract MyTokenIsERC20Test is Test {
 
     function test_PoolAllocate_RevertsWhenCallerIsNotManager() public {
         vm.prank(owner);
-        token.setPoolAddress(_validPools());
+        token.setPoolAddressByOwner(_validPools());
 
         vm.prank(other);
         vm.expectRevert("MyTokenIsERC20 onlyManager : only manager can call this function");
-        token.poolAllocate();
+        token.setPoolAllocateByManager();
     }
 
     function test_PoolAllocate_RevertsWhenOwnerCalls() public {
         vm.prank(owner);
-        token.setPoolAddress(_validPools());
+        token.setPoolAddressByOwner(_validPools());
 
         // owner 也不能直接分配，必须是 manager
         vm.prank(owner);
         vm.expectRevert("MyTokenIsERC20 onlyManager : only manager can call this function");
-        token.poolAllocate();
+        token.setPoolAllocateByManager();
     }
 
     function test_PoolAllocate_RevertsWhenCalledTwice() public {
@@ -254,14 +254,14 @@ contract MyTokenIsERC20Test is Test {
 
         vm.prank(manager);
         vm.expectRevert("MyTokenIsERC20 _beforeAllocation : OHANA is already allocate");
-        token.poolAllocate();
+        token.setPoolAllocateByManager();
     }
 
     function test_PoolAllocate_RevertsWhenPoolsNotSet() public {
         // 未 setPoolAddress 时池地址为 0，_mint 到零地址会回滚
         vm.prank(manager);
         vm.expectRevert();
-        token.poolAllocate();
+        token.setPoolAllocateByManager();
     }
 
     // =============================================================
@@ -320,9 +320,9 @@ contract MyTokenIsERC20Test is Test {
 
     function _configureAndAllocate() internal {
         vm.prank(owner);
-        token.setPoolAddress(_validPools());
+        token.setPoolAddressByOwner(_validPools());
 
         vm.prank(manager);
-        token.poolAllocate();
+        token.setPoolAllocateByManager();
     }
 }
