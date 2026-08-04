@@ -243,7 +243,7 @@ contract MyTokenIsERC20 is
     function _beforePoolAllocation() internal virtual {
         require(
             !isAllocation,
-            "MyTokenIsERC20 _beforeAllocation : OHANA is already allocate"
+            "MyTokenIsERC20 _beforePoolAllocation : OHANA is already allocate"
         );
     }
 
