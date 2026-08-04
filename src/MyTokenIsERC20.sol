@@ -166,7 +166,7 @@ contract MyTokenIsERC20 is
      * @dev 仅 owner 可调用；当前允许设为零地址（将导致 onlyManager 函数无人可调），调用方需谨慎
      * @param _manager 新的 manager 地址
      */
-    function setManager(address _manager) external onlyOwner {
+    function setManagerByOwner(address _manager) external onlyOwner {
         address oldAddress = manager;
         manager = _manager;
         // 状态变更应抛出 event，方便链下索引与审计
@@ -179,7 +179,7 @@ contract MyTokenIsERC20 is
      *      分配完成前可多次调用以更新配置；分配后不可再改
      * @param _myTokenIsERC20Pool 资金池地址结构体
      */
-    function setPoolAddress(MyTokenIsERC20Pool memory _myTokenIsERC20Pool) external onlyOwner {
+    function setPoolAddressByOwner(MyTokenIsERC20Pool memory _myTokenIsERC20Pool) external onlyOwner {
         _beforeAllocation();
         _beforePoolAddress(_myTokenIsERC20Pool);
         myTokenIsERC20Pool = _myTokenIsERC20Pool;
@@ -203,7 +203,7 @@ contract MyTokenIsERC20 is
      *  - ecosystemPool    10%
      *  - foundationPool   30%
      */
-    function poolAllocate() external onlyManager {
+    function setPoolAllocateByManager() external onlyManager {
         _beforeAllocation();
         _mint(myTokenIsERC20Pool.miningPool, (MaxTotalSupply * 3) / 10); // 30%
         _mint(myTokenIsERC20Pool.directSalePool, (MaxTotalSupply * 2) / 10); // 20%
@@ -240,7 +240,7 @@ contract MyTokenIsERC20 is
      * @notice 分配前检查：确保尚未完成分配
      * @dev 若 isAllocation 已为 true，则回滚，防止重复分配或在分配后改池地址
      */
-    function _beforeAllocation() internal virtual {
+    function _beforePoolAllocation() internal virtual {
         require(
             !isAllocation,
             "MyTokenIsERC20 _beforeAllocation : OHANA is already allocate"
