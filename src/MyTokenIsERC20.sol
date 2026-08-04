@@ -180,7 +180,7 @@ contract MyTokenIsERC20 is
      * @param _myTokenIsERC20Pool 资金池地址结构体
      */
     function setPoolAddressByOwner(MyTokenIsERC20Pool memory _myTokenIsERC20Pool) external onlyOwner {
-        _beforeAllocation();
+        _beforePoolAllocation();
         _beforePoolAddress(_myTokenIsERC20Pool);
         myTokenIsERC20Pool = _myTokenIsERC20Pool;
         // 状态变更应抛出 event，方便链下索引与审计
@@ -204,7 +204,7 @@ contract MyTokenIsERC20 is
      *  - foundationPool   30%
      */
     function setPoolAllocateByManager() external onlyManager {
-        _beforeAllocation();
+        _beforePoolAllocation();
         _mint(myTokenIsERC20Pool.miningPool, (MaxTotalSupply * 3) / 10); // 30%
         _mint(myTokenIsERC20Pool.directSalePool, (MaxTotalSupply * 2) / 10); // 20%
         _mint(myTokenIsERC20Pool.investorSalePool, MaxTotalSupply / 10); // 10%
