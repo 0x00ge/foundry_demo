@@ -153,6 +153,7 @@ contract MyTokenIsERC20 is
             msg.sender == manager,
             "MyTokenIsERC20 onlyManager : only manager can call this function"
         );
+        // 特殊占位符，表示「把被修饰函数的代码插入到这里」。
         _;
     }
 
@@ -203,6 +204,7 @@ contract MyTokenIsERC20 is
      *  - foundationPool   30%
      */
     function setPoolAllocateByManager() external onlyManager {
+        // modifier onlyManager() {没有 _;}，function setPoolAllocateByManager() {函数体就是空的}
         _beforePoolAllocation();
         _mint(myTokenIsERC20Pool.miningPool, (MaxTotalSupply * 3) / 10); // 30%
         _mint(myTokenIsERC20Pool.directSalePool, (MaxTotalSupply * 2) / 10); // 20%
