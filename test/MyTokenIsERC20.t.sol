@@ -192,7 +192,7 @@ contract MyTokenIsERC20Test is Test {
         _configureAndAllocate();
 
         vm.prank(owner);
-        vm.expectRevert("MyTokenIsERC20 _beforeAllocation : OHANA is already allocate");
+        vm.expectRevert("MyTokenIsERC20 _beforePoolAllocation : OHANA is already allocate");
         token.setPoolAddressByOwner(_validPools());
     }
 
@@ -253,7 +253,7 @@ contract MyTokenIsERC20Test is Test {
         _configureAndAllocate();
 
         vm.prank(manager);
-        vm.expectRevert("MyTokenIsERC20 _beforeAllocation : OHANA is already allocate");
+        vm.expectRevert("MyTokenIsERC20 _beforePoolAllocation : OHANA is already allocate");
         token.setPoolAllocateByManager();
     }
 
