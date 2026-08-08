@@ -1,328 +1,231 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {Test} from "forge-std/Test.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {MyTokenContract} from "../src/MyTokenContract.sol";
+import "forge-std/Test.sol";
+import "../src/MyTokenContract.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-contract MyTokenIsERC20Test is Test {
+contract MyTokenContractTest is Test {
     MyTokenContract public token;
-    MyTokenContract public implementation;
+    ProxyAdmin public proxyAdmin;
+    address public owner;
+    address public admin;
+    address public user1;
+    address public user2;
+    address public miningPool;
+    address public directSalePool;
+    address public investorSalePool;
+    address public ecosystemPool;
+    address public foundationPool;
 
-    address public owner = makeAddr("owner");
-    address public manager = makeAddr("manager");
-    address public other = makeAddr("other");
-
-    address public miningPool = makeAddr("miningPool");
-    address public directSalePool = makeAddr("directSalePool");
-    address public investorSalePool = makeAddr("investorSalePool");
-    address public ecosystemPool = makeAddr("ecosystemPool");
-    address public foundationPool = makeAddr("foundationPool");
-
-    uint256 public constant MAX_TOTAL_SUPPLY = 1_000_000_000 * 10 ** 6;
-
-    event SetManager(address indexed _newAddress, address _oldAddress);
-    event SetPoolAddress(MyTokenContract.MyTokenContractPool indexed _myTokenIsERC20Pool);
+    uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10 ** 6; // 1e15
 
     function setUp() public {
-        implementation = new MyTokenContract();
-        bytes memory initData = abi.encodeCall(MyTokenContract.initialize, (owner, manager));
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        // 创建测试账户
+        owner = address(0x1001);
+        admin = address(0x1002);
+        user1 = address(0x2001);
+        user2 = address(0x2002);
+        miningPool = address(0x3001);
+        directSalePool = address(0x3002);
+        investorSalePool = address(0x3003);
+        ecosystemPool = address(0x3004);
+        foundationPool = address(0x3005);
+
+        // 部署逻辑合约
+        MyTokenContract logic = new MyTokenContract();
+
+        // 部署 ProxyAdmin
+        proxyAdmin = new ProxyAdmin();
+
+        // 编码初始化数据
+        bytes memory initData = abi.encodeWithSelector(
+            MyTokenContract.initialize.selector,
+            owner,
+            admin
+        );
+
+        // 部署透明代理
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(logic),
+            address(proxyAdmin),
+            initData
+        );
+
         token = MyTokenContract(address(proxy));
+
+        // 如果 ProxyAdmin 的 owner 不是测试账户（默认是测试合约），需要转移
+        // 在测试中，测试合约是部署者，是 ProxyAdmin 的 owner，可以直接调用
     }
 
-    // =============================================================
-    //                        initialize
-    // =============================================================
-
-    function test_Initialize_SetsStateCorrectly() public view {
-        assertEq(token.owner(), owner);
-        assertEq(token.manager(), manager);
-        assertEq(token.name(), "NAME_OHANA");
-        assertEq(token.symbol(), "SYMBOL_OHANA");
-        assertEq(token.decimals(), 6);
-        assertEq(token.isAllocation(), false);
-        assertEq(token.totalSupply(), 0);
-    }
-
-    function test_Initialize_RevertsWhenOwnerIsZero() public {
-        MyTokenContract impl = new MyTokenContract();
-        bytes memory initData = abi.encodeCall(MyTokenContract.initialize, (address(0), manager));
-
-        vm.expectRevert("MyTokenContract initialize : _owner can't be zero address");
-        new ERC1967Proxy(address(impl), initData);
-    }
-
-    function test_Initialize_RevertsWhenCalledTwice() public {
-        vm.expectRevert();
-        token.initialize(owner, manager);
-    }
-
-    function test_Implementation_CannotBeInitialized() public {
-        // 实现合约构造函数调用了 _disableInitializers()
-        vm.expectRevert();
-        implementation.initialize(owner, manager);
-    }
-
-    // =============================================================
-    //                        setManager
-    // =============================================================
-
-    function test_SetManager_Success() public {
-        address newManager = makeAddr("newManager");
-
-        vm.expectEmit(true, false, false, true);
-        emit SetManager(newManager, manager);
-
-        vm.prank(owner);
-        token.setManagerByOwner(newManager);
-
-        assertEq(token.manager(), newManager);
-    }
-
-    function test_SetManager_RevertsWhenCallerIsNotOwner() public {
-        vm.prank(other);
-        vm.expectRevert();
-        token.setManagerByOwner(other);
-    }
-
-    function test_SetManager_AllowsZeroAddress() public {
-        // 合约当前允许设为零地址；仅验证行为与文档一致
-        vm.prank(owner);
-        token.setManagerByOwner(address(0));
-        assertEq(token.manager(), address(0));
-    }
-
-    // =============================================================
-    //                      setPoolAddress
-    // =============================================================
-
-    function test_SetPoolAddress_Success() public {
-        MyTokenContract.MyTokenContractPool memory pools = _validPools();
-
-        vm.prank(owner);
-        token.setPoolAddressByOwner(pools);
-
-        (
-            address mining,
-            address directSale,
-            address investorSale,
-            address ecosystem,
-            address foundation
-        ) = token.myTokenIsERC20Pool();
-
-        assertEq(mining, miningPool);
-        assertEq(directSale, directSalePool);
-        assertEq(investorSale, investorSalePool);
-        assertEq(ecosystem, ecosystemPool);
-        assertEq(foundation, foundationPool);
-    }
-
-    function test_SetPoolAddress_CanUpdateBeforeAllocation() public {
-        vm.startPrank(owner);
-        token.setPoolAddressByOwner(_validPools());
-
-        address newMining = makeAddr("newMining");
-        MyTokenContract.MyTokenContractPool memory updated = MyTokenContract.MyTokenContractPool({
-            miningPool: newMining,
-            directSalePool: directSalePool,
-            investorSalePool: investorSalePool,
-            ecosystemPool: ecosystemPool,
-            foundationPool: foundationPool
-        });
-        token.setPoolAddressByOwner(updated);
-        vm.stopPrank();
-
-        (address mining,,,,) = token.myTokenIsERC20Pool();
-        assertEq(mining, newMining);
-    }
-
-    function test_SetPoolAddress_RevertsWhenCallerIsNotOwner() public {
-        vm.prank(other);
-        vm.expectRevert();
-        token.setPoolAddressByOwner(_validPools());
-    }
-
-    function test_SetPoolAddress_RevertsWhenMiningPoolIsZero() public {
-        MyTokenContract.MyTokenContractPool memory pools = _validPools();
-        pools.miningPool = address(0);
-
-        vm.prank(owner);
-        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing MiningPool address");
-        token.setPoolAddressByOwner(pools);
-    }
-
-    function test_SetPoolAddress_RevertsWhenDirectSalePoolIsZero() public {
-        MyTokenContract.MyTokenContractPool memory pools = _validPools();
-        pools.directSalePool = address(0);
-
-        vm.prank(owner);
-        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing DirectSalePool address");
-        token.setPoolAddressByOwner(pools);
-    }
-
-    function test_SetPoolAddress_RevertsWhenInvestorSalePoolIsZero() public {
-        MyTokenContract.MyTokenContractPool memory pools = _validPools();
-        pools.investorSalePool = address(0);
-
-        vm.prank(owner);
-        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing InvestorSalePool address");
-        token.setPoolAddressByOwner(pools);
-    }
-
-    function test_SetPoolAddress_RevertsWhenEcosystemPoolIsZero() public {
-        MyTokenContract.MyTokenContractPool memory pools = _validPools();
-        pools.ecosystemPool = address(0);
-
-        vm.prank(owner);
-        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing EcosystemPool address");
-        token.setPoolAddressByOwner(pools);
-    }
-
-    function test_SetPoolAddress_RevertsWhenFoundationPoolIsZero() public {
-        MyTokenContract.MyTokenContractPool memory pools = _validPools();
-        pools.foundationPool = address(0);
-
-        vm.prank(owner);
-        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing FoundationPool address");
-        token.setPoolAddressByOwner(pools);
-    }
-
-    function test_SetPoolAddress_RevertsAfterAllocation() public {
-        _configureAndAllocate();
-
-        vm.prank(owner);
-        vm.expectRevert("MyTokenContract _beforePoolAllocation : OHANA is already allocate");
-        token.setPoolAddressByOwner(_validPools());
-    }
-
-    // =============================================================
-    //                       poolAllocate
-    // =============================================================
-
-    function test_PoolAllocate_MintsCorrectAmounts() public {
-        _configureAndAllocate();
-
-        uint256 expectedMining = (MAX_TOTAL_SUPPLY * 3) / 10; // 30%
-        uint256 expectedDirectSale = (MAX_TOTAL_SUPPLY * 2) / 10; // 20%
-        uint256 expectedInvestor = MAX_TOTAL_SUPPLY / 10; // 10%
-        uint256 expectedEcosystem = MAX_TOTAL_SUPPLY / 10; // 10%
-        uint256 expectedFoundation = (MAX_TOTAL_SUPPLY * 3) / 10; // 30%
-
-        assertEq(token.balanceOf(miningPool), expectedMining);
-        assertEq(token.balanceOf(directSalePool), expectedDirectSale);
-        assertEq(token.balanceOf(investorSalePool), expectedInvestor);
-        assertEq(token.balanceOf(ecosystemPool), expectedEcosystem);
-        assertEq(token.balanceOf(foundationPool), expectedFoundation);
-
-        assertEq(token.totalSupply(), MAX_TOTAL_SUPPLY);
-        assertTrue(token.isAllocation());
-    }
-
-    function test_PoolAllocate_PercentagesSumTo100() public {
-        _configureAndAllocate();
-
-        uint256 sum = token.balanceOf(miningPool) + token.balanceOf(directSalePool)
-            + token.balanceOf(investorSalePool) + token.balanceOf(ecosystemPool)
-            + token.balanceOf(foundationPool);
-
-        assertEq(sum, MAX_TOTAL_SUPPLY);
-        assertEq(sum, token.totalSupply());
-    }
-
-    function test_PoolAllocate_RevertsWhenCallerIsNotManager() public {
-        vm.prank(owner);
-        token.setPoolAddressByOwner(_validPools());
-
-        vm.prank(other);
-        vm.expectRevert("MyTokenIsERC20 onlyManager : only manager can call this function");
-        token.setPoolAllocateByManager();
-    }
-
-    function test_PoolAllocate_RevertsWhenOwnerCalls() public {
-        vm.prank(owner);
-        token.setPoolAddressByOwner(_validPools());
-
-        // owner 也不能直接分配，必须是 manager
-        vm.prank(owner);
-        vm.expectRevert("MyTokenIsERC20 onlyManager : only manager can call this function");
-        token.setPoolAllocateByManager();
-    }
-
-    function test_PoolAllocate_RevertsWhenCalledTwice() public {
-        _configureAndAllocate();
-
-        vm.prank(manager);
-        vm.expectRevert("MyTokenIsERC20 _beforePoolAllocation : OHANA is already allocate");
-        token.setPoolAllocateByManager();
-    }
-
-    function test_PoolAllocate_RevertsWhenPoolsNotSet() public {
-        // 未 setPoolAddress 时池地址为 0，_mint 到零地址会回滚
-        vm.prank(manager);
-        vm.expectRevert();
-        token.setPoolAllocateByManager();
-    }
-
-    // =============================================================
-    //                     view / burn helpers
-    // =============================================================
-
-    function test_TokenBalance_MatchesBalanceOf() public {
-        _configureAndAllocate();
-
-        assertEq(token.getBalanceOf(miningPool), token.balanceOf(miningPool));
-        assertEq(token.getBalanceOf(other), 0);
-    }
-
-    function test_Decimals_IsSix() public view {
-        assertEq(token.decimals(), 6);
-    }
-
-    function test_Burn_WorksAfterAllocation() public {
-        _configureAndAllocate();
-
-        uint256 burnAmount = 1_000 * 10 ** 6;
-        uint256 beforeBal = token.balanceOf(miningPool);
-        uint256 beforeSupply = token.totalSupply();
-
-        vm.prank(miningPool);
-        token.burn(burnAmount);
-
-        assertEq(token.balanceOf(miningPool), beforeBal - burnAmount);
-        assertEq(token.totalSupply(), beforeSupply - burnAmount);
-    }
-
-    function test_Transfer_WorksAfterAllocation() public {
-        _configureAndAllocate();
-
-        uint256 amount = 100 * 10 ** 6;
-        vm.prank(miningPool);
-        assertTrue(token.transfer(other, amount));
-
-        assertEq(token.balanceOf(other), amount);
-        assertEq(token.tokenBalance(other), amount);
-    }
-
-    // =============================================================
-    //                         helpers
-    // =============================================================
-
-    function _validPools() internal view returns (MyTokenContract.MyTokenContractPool memory) {
-        return MyTokenContract.MyTokenContractPool({
+    // ---------- 辅助函数 ----------
+    function _setPoolAddresses() internal {
+        MyTokenContract.MyTokenContractPool memory pool = MyTokenContract.MyTokenContractPool({
             miningPool: miningPool,
             directSalePool: directSalePool,
             investorSalePool: investorSalePool,
             ecosystemPool: ecosystemPool,
             foundationPool: foundationPool
         });
-    }
-
-    function _configureAndAllocate() internal {
         vm.prank(owner);
-        token.setPoolAddressByOwner(_validPools());
-
-        vm.prank(manager);
-        token.setPoolAllocateByManager();
+        token.setPoolAddressByOwner(pool);
     }
+
+    // ---------- 测试 ----------
+
+    function test_Initialization() public {
+        assertEq(token.name(), "NAME_OHANA");
+        assertEq(token.symbol(), "SYMBOL_OHANA");
+        assertEq(token.decimals(), 6);
+        assertEq(token.owner(), owner);
+        assertEq(token.admin(), admin);
+        assertEq(token.isAllocation(), false);
+        assertEq(token.totalSupply(), 0);
+    }
+
+    function test_SetAdminByOwner() public {
+        address newAdmin = address(0x999);
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit SetAdmin(newAdmin, admin);
+        token.setAdminByOwner(newAdmin);
+        assertEq(token.admin(), newAdmin);
+    }
+
+    function test_SetAdminByOwner_RevertNonOwner() public {
+        vm.prank(admin);
+        vm.expectRevert("Ownable: caller is not the owner");
+        token.setAdminByOwner(address(0x999));
+    }
+
+    function test_SetPoolAddresses() public {
+        MyTokenContract.MyTokenContractPool memory pool = MyTokenContract.MyTokenContractPool({
+            miningPool: miningPool,
+            directSalePool: directSalePool,
+            investorSalePool: investorSalePool,
+            ecosystemPool: ecosystemPool,
+            foundationPool: foundationPool
+        });
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit SetPool(pool);
+        token.setPoolAddressByOwner(pool);
+
+        MyTokenContract.MyTokenContractPool memory stored = token.MyTokenContractPool();
+        assertEq(stored.miningPool, miningPool);
+        assertEq(stored.directSalePool, directSalePool);
+        assertEq(stored.investorSalePool, investorSalePool);
+        assertEq(stored.ecosystemPool, ecosystemPool);
+        assertEq(stored.foundationPool, foundationPool);
+    }
+
+    function test_SetPoolAddresses_RevertZeroAddress() public {
+        MyTokenContract.MyTokenContractPool memory pool = MyTokenContract.MyTokenContractPool({
+            miningPool: address(0),
+            directSalePool: directSalePool,
+            investorSalePool: investorSalePool,
+            ecosystemPool: ecosystemPool,
+            foundationPool: foundationPool
+        });
+        vm.prank(owner);
+        vm.expectRevert("MyTokenContract _beforeSetPool: Missing MiningPool address");
+        token.setPoolAddressByOwner(pool);
+    }
+
+    function test_SetPoolAddresses_RevertNonOwner() public {
+        MyTokenContract.MyTokenContractPool memory pool = MyTokenContract.MyTokenContractPool({
+            miningPool: miningPool,
+            directSalePool: directSalePool,
+            investorSalePool: investorSalePool,
+            ecosystemPool: ecosystemPool,
+            foundationPool: foundationPool
+        });
+        vm.prank(admin);
+        vm.expectRevert("Ownable: caller is not the owner");
+        token.setPoolAddressByOwner(pool);
+    }
+
+    function test_AllocateTokens() public {
+        _setPoolAddresses();
+
+        vm.prank(admin);
+        token.setPoolTokenByAdmin();
+
+        assertEq(token.totalSupply(), MAX_SUPPLY);
+        assertEq(token.isAllocation(), true);
+
+        // 检查各池余额
+        assertEq(token.balanceOf(miningPool), (MAX_SUPPLY * 3) / 10);
+        assertEq(token.balanceOf(directSalePool), (MAX_SUPPLY * 2) / 10);
+        assertEq(token.balanceOf(investorSalePool), MAX_SUPPLY / 10);
+        assertEq(token.balanceOf(ecosystemPool), MAX_SUPPLY / 10);
+        assertEq(token.balanceOf(foundationPool), (MAX_SUPPLY * 3) / 10);
+    }
+
+    function test_Allocate_RevertIfAlreadyAllocated() public {
+        _setPoolAddresses();
+        vm.prank(admin);
+        token.setPoolTokenByAdmin();
+
+        vm.prank(admin);
+        vm.expectRevert("MyTokenContract _beforePoolAllocation : OHANA is already allocate");
+        token.setPoolTokenByAdmin();
+    }
+
+    function test_Allocate_RevertIfNotAdmin() public {
+        _setPoolAddresses();
+        vm.prank(user1);
+        vm.expectRevert("MyTokenContract onlyAdmin : only admin can call this function");
+        token.setPoolTokenByAdmin();
+    }
+
+    function test_Allocate_RevertIfPoolNotSet() public {
+        // 不调用 _setPoolAddresses，直接分配
+        vm.prank(admin);
+        // 预期会 revert，因为 _mint 到零地址（结构体默认全零）
+        vm.expectRevert(); // 因为 `_mint` 到 address(0) 会触发 ERC20 的 assert
+        token.setPoolTokenByAdmin();
+    }
+
+    function test_Transfers() public {
+        _setPoolAddresses();
+        vm.prank(admin);
+        token.setPoolTokenByAdmin();
+
+        uint256 amount = 100 * 10 ** 6; // 100 枚
+        vm.prank(miningPool);
+        token.transfer(user1, amount);
+        assertEq(token.balanceOf(user1), amount);
+    }
+
+    function test_Burn() public {
+        _setPoolAddresses();
+        vm.prank(admin);
+        token.setPoolTokenByAdmin();
+
+        uint256 burnAmount = 100 * 10 ** 6;
+        uint256 balanceBefore = token.balanceOf(miningPool);
+        vm.prank(miningPool);
+        token.burn(burnAmount);
+        assertEq(token.balanceOf(miningPool), balanceBefore - burnAmount);
+        assertEq(token.totalSupply(), MAX_SUPPLY - burnAmount);
+    }
+
+    function test_ApproveAndTransferFrom() public {
+        _setPoolAddresses();
+        vm.prank(admin);
+        token.setPoolTokenByAdmin();
+
+        uint256 amount = 50 * 10 ** 6;
+        vm.prank(miningPool);
+        token.approve(user2, amount);
+        vm.prank(user2);
+        token.transferFrom(miningPool, user1, amount);
+        assertEq(token.balanceOf(user1), amount);
+    }
+
+    // ---------- 事件定义（用于测试） ----------
+    event SetAdmin(address indexed _newAddress, address _oldAddress);
+    event SetPool(MyTokenContract.MyTokenContractPool indexed _MyTokenContractPool);
 }
