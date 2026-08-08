@@ -32,52 +32,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 
-//├── 🚀 部署者 (EOA)
-//│   ├── 部署 UUPS 代理合约 (Proxy) 与 逻辑合约 V1 (MyTokenContract)
-//│   │   └── 注意: 代理合约自带 upgradeTo 功能 (UUPS 标准)
-//│   ├── 调用代理合约的 initialize(owner, admin) 初始化函数
-//│   │   └── 触发 delegatecall 执行逻辑合约 V1 中的初始化代码
-//│   │       ├── 设置代币名称 "OHANATOKEN" 与符号 "OHANA"
-//│   │       ├── 设置合约 Owner (传入的 _owner)
-//│   │       ├── 设置业务管理员 (传入的 _admin)
-//│   │       └── 将 isAllocation 置为 false
-//│   └── 将合约 Owner 权限转移给 -> 多签钱包 (Gnosis Safe, 如 3/5)
-//│
-//├── 👤 普通用户 (EOA)
-//│   └── 调用 ERC20 标准函数 (transfer, approve, transferFrom, burn 等)
-//│       └── 📦 Proxy 代理合约 (无身份限制，无条件转发)
-//│           └── 触发 delegatecall 转发 -> 🧠 Logic V1 (当前逻辑)
-//│               ├── Logic V1 执行标准代币逻辑 (转账、燃烧等)
-//│               └── 状态变更 (余额、授权等) 回写并存储到 📦 Proxy 自身存储
-//│
-//└── 🔑 管理层 (多签钱包 + 业务管理员)
-//    ├── 👑 Owner (多签钱包, 3/5 签名)
-//    │   ├── 核心配置操作 (通过多签提案 -> 执行):
-//    │   │   ├── setAdminByOwner(address _admin)
-//    │   │   │   └── 更新业务管理员地址，触发 SetAdmin 事件
-//    │   │   └── setPoolAddressByOwner(MyTokenContractPool memory _pool)
-//    │   │       ├── 前提: isAllocation == false (分配未发生)
-//    │   │       ├── 校验五个资金池地址均非零地址
-//    │   │       └── 更新存储中的资金池配置，触发 SetPool 事件
-//    │   └── 升级管理 (通过代理的 upgradeTo):
-//    │       ├── 多签钱包签名提案 "升级到 Logic V2"
-//    │       ├── 达到阈值后，调用代理合约的 upgradeTo(newImpl)
-//    │       ├── Proxy 将调用转发给当前 Logic V1
-//    │       ├── Logic V1 执行 _authorizeUpgrade() 权限检查 (仅 owner)
-//    │       ├── 权限通过后，更新 EIP-1967 逻辑地址槽指向 Logic V2
-//    │       └── 代理地址永久不变，后续调用使用新逻辑
-//    │
-//    └── 🧑‍💼 Admin (业务管理员，由 owner 设置)
-//        └── 执行一次性代币分配 (仅一次):
-//            └── setPoolTokenByAdmin()
-//                ├── 前提: isAllocation == false 且资金池地址已配置
-//                ├── 铸造最大总供应量 (1e15 最小单位) 并按比例分配:
-//                │   ├── miningPool       -> 30% (MaxTotalSupply * 3 / 10)
-//                │   ├── directSalePool   -> 20% (MaxTotalSupply * 2 / 10)
-//                │   ├── investorSalePool -> 10% (MaxTotalSupply / 10)
-//                │   ├── ecosystemPool    -> 10% (MaxTotalSupply / 10)
-//                │   └── foundationPool   -> 30% (MaxTotalSupply * 3 / 10)
-//                └── 将 isAllocation 置为 true，锁定后续配置与分配
 contract MyTokenContract is
     Initializable,
     OwnableUpgradeable,
