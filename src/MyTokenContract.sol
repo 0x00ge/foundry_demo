@@ -90,11 +90,7 @@ contract MyTokenContract is
      *      无法按单个池地址过滤；data 区仍可完整解码
      * @param _MyTokenContractPool 新的资金池配置
      */
-    event SetPoolAddress(MyTokenContractPool indexed _MyTokenContractPool);
-
-    // =============================================================
-    //                          构造函数
-    // =============================================================
+    event SetPool(MyTokenContractPool indexed _MyTokenContractPool);
 
     /**
      * @notice 实现合约构造函数
@@ -110,7 +106,7 @@ contract MyTokenContract is
      * @dev
      *  - initializer 修饰器保证只初始化一次
      *  - 依次初始化 ERC20、Burnable、Ownable
-     *  - __Ownable_init(_owner) 内部已设置 owner；此处额外调用 _transferOwnership 为冗余，可保留作显式强调
+     *  - __Ownable_init(_owner) 内部已设置 owner
      *  - 设置 admin，并将 isAllocation 置为 false
      * @param _owner   合约 owner（不可为零地址）
      * @param _admin 初始 admin 地址（当前未校验非零，调用方需自行保证）
@@ -123,7 +119,6 @@ contract MyTokenContract is
         __ERC20_init(NAME, SYMBOL);
         __ERC20Burnable_init();
         __Ownable_init(_owner);
-        _transferOwnership(_owner);
         admin = _admin;
         isAllocation = false;
     }
@@ -161,7 +156,7 @@ contract MyTokenContract is
         _beforePoolAllocation();
         _beforePoolAddress(_MyTokenContractPool);
         MyTokenContractPool = _MyTokenContractPool;
-        emit SetPoolAddress(_MyTokenContractPool);
+        emit SetPool(_MyTokenContractPool);
     }
 
     /**
