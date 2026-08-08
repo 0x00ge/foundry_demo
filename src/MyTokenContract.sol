@@ -153,8 +153,8 @@ contract MyTokenContract is
      * @param _MyTokenContractPool 资金池地址结构体
      */
     function setPoolAddressByOwner(MyTokenContractPool memory _MyTokenContractPool) external onlyOwner {
-        _beforePoolAllocation();
-        _beforePoolAddress(_MyTokenContractPool);
+        _beforeSetPoolAllocation();
+        _beforeSetPool(_MyTokenContractPool);
         MyTokenContractPool = _MyTokenContractPool;
         emit SetPool(_MyTokenContractPool);
     }
@@ -175,8 +175,8 @@ contract MyTokenContract is
      *  - ecosystemPool    10%
      *  - foundationPool   30%
      */
-    function setPoolAllocateByAdmin() external onlyAdmin {
-        _beforePoolAllocation();
+    function setPooByAdmin() external onlyAdmin {
+        _beforeSetPoolAllocation();
         _mint(MyTokenContractPool.miningPool, (MaxTotalSupply * 3) / 10); // 30%
         _mint(MyTokenContractPool.directSalePool, (MaxTotalSupply * 2) / 10); // 20%
         _mint(MyTokenContractPool.investorSalePool, MaxTotalSupply / 10); // 10%
@@ -208,7 +208,7 @@ contract MyTokenContract is
      * @notice 分配前检查：确保尚未完成分配
      * @dev 若 isAllocation 已为 true，则回滚，防止重复分配或在分配后改池地址
      */
-    function _beforePoolAllocation() internal virtual {
+    function _beforeSetPoolAllocation() internal virtual {
         require(
             !isAllocation,
             "MyTokenContract _beforePoolAllocation : OHANA is already allocate"
@@ -220,7 +220,7 @@ contract MyTokenContract is
      * @dev 五个池地址均不能为零地址，否则回滚
      * @param _pool 待校验的资金池配置
      */
-    function _beforePoolAddress(MyTokenContractPool memory _pool) internal virtual {
+    function _beforeSetPool(MyTokenContractPool memory _pool) internal virtual {
         require(
             _pool.miningPool != address(0),
             "MyTokenContract _beforePoolAddress: Missing MiningPool address"

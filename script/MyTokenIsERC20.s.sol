@@ -37,7 +37,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
-import {MyTokenIsERC20} from "../src/MyTokenContract.sol";
+import {MyTokenContract} from "../src/MyTokenContract.sol";
 import {console, Script} from "forge-std/Script.sol";
 
 contract MyTokenIsERC20Script is Script {
@@ -49,10 +49,10 @@ contract MyTokenIsERC20Script is Script {
     ProxyAdmin public myTokenProxyAdmin;
 
     /// @notice 对外使用的代币地址（实际指向 Proxy，业务调用打到此地址）
-    MyTokenIsERC20 public myToken;
+    MyTokenContract public myToken;
 
     /// @notice 实现合约地址（仅存逻辑，不应直接被用户调用 initialize）
-    MyTokenIsERC20 public myTokenImplementation;
+    MyTokenContract public myTokenImplementation;
 
     // =============================================================
     //                          入口函数
@@ -87,13 +87,13 @@ contract MyTokenIsERC20Script is Script {
 
         // ---------- 1. 部署实现合约 ----------
         // 实现合约 constructor 会 _disableInitializers()，防止有人直接 initialize 实现合约
-        myTokenImplementation = new MyTokenIsERC20();
+        myTokenImplementation = new MyTokenContract();
 
         // ---------- 2. 编码初始化数据 ----------
         // 使用 abi.encodeCall 保证函数签名与参数类型在编译期检查
         // initialize 参数：(owner, manager) —— owner 为部署者，manager 来自环境变量
         bytes memory initData = abi.encodeCall(
-            MyTokenIsERC20.initialize,
+            MyTokenContract.initialize,
             (deployerAddress, managerAddress)
         );
 
@@ -110,7 +110,7 @@ contract MyTokenIsERC20Script is Script {
 
         // ---------- 4. 绑定业务接口 ----------
         // 业务侧始终与 Proxy 交互；Proxy 再 delegatecall 到当前 implementation
-        myToken = MyTokenIsERC20(address(proxyMyToken));
+        myToken = MyTokenContract(address(proxyMyToken));
 
         // ---------- 5. 读取自动创建的 ProxyAdmin ----------
         // 后续 upgrade 需通过 ProxyAdmin.upgradeAndCall，而不是直接调 Proxy

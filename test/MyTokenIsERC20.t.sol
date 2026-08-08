@@ -3,11 +3,11 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {MyTokenIsERC20} from "../src/MyTokenContract.sol";
+import {MyTokenContract} from "../src/MyTokenContract.sol";
 
 contract MyTokenIsERC20Test is Test {
-    MyTokenIsERC20 public token;
-    MyTokenIsERC20 public implementation;
+    MyTokenContract public token;
+    MyTokenContract public implementation;
 
     address public owner = makeAddr("owner");
     address public manager = makeAddr("manager");
@@ -22,13 +22,13 @@ contract MyTokenIsERC20Test is Test {
     uint256 public constant MAX_TOTAL_SUPPLY = 1_000_000_000 * 10 ** 6;
 
     event SetManager(address indexed _newAddress, address _oldAddress);
-    event SetPoolAddress(MyTokenIsERC20.MyTokenIsERC20Pool indexed _myTokenIsERC20Pool);
+    event SetPoolAddress(MyTokenContract.MyTokenContractPool indexed _myTokenIsERC20Pool);
 
     function setUp() public {
-        implementation = new MyTokenIsERC20();
-        bytes memory initData = abi.encodeCall(MyTokenIsERC20.initialize, (owner, manager));
+        implementation = new MyTokenContract();
+        bytes memory initData = abi.encodeCall(MyTokenContract.initialize, (owner, manager));
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
-        token = MyTokenIsERC20(address(proxy));
+        token = MyTokenContract(address(proxy));
     }
 
     // =============================================================
@@ -38,7 +38,7 @@ contract MyTokenIsERC20Test is Test {
     function test_Initialize_SetsStateCorrectly() public view {
         assertEq(token.owner(), owner);
         assertEq(token.manager(), manager);
-        assertEq(token.name(), "MyTokenIsERC20USDT");
+        assertEq(token.name(), "OHANATOKEN");
         assertEq(token.symbol(), "OHANA");
         assertEq(token.decimals(), 6);
         assertEq(token.isAllocation(), false);
@@ -46,10 +46,10 @@ contract MyTokenIsERC20Test is Test {
     }
 
     function test_Initialize_RevertsWhenOwnerIsZero() public {
-        MyTokenIsERC20 impl = new MyTokenIsERC20();
-        bytes memory initData = abi.encodeCall(MyTokenIsERC20.initialize, (address(0), manager));
+        MyTokenContract impl = new MyTokenContract();
+        bytes memory initData = abi.encodeCall(MyTokenContract.initialize, (address(0), manager));
 
-        vm.expectRevert("MyTokenIsERC20 initialize : _owner can't be zero address");
+        vm.expectRevert("MyTokenContract initialize : _owner can't be zero address");
         new ERC1967Proxy(address(impl), initData);
     }
 
@@ -98,7 +98,7 @@ contract MyTokenIsERC20Test is Test {
     // =============================================================
 
     function test_SetPoolAddress_Success() public {
-        MyTokenIsERC20.MyTokenIsERC20Pool memory pools = _validPools();
+        MyTokenContract.MyTokenContractPool memory pools = _validPools();
 
         vm.prank(owner);
         token.setPoolAddressByOwner(pools);
@@ -123,7 +123,7 @@ contract MyTokenIsERC20Test is Test {
         token.setPoolAddressByOwner(_validPools());
 
         address newMining = makeAddr("newMining");
-        MyTokenIsERC20.MyTokenIsERC20Pool memory updated = MyTokenIsERC20.MyTokenIsERC20Pool({
+        MyTokenContract.MyTokenContractPool memory updated = MyTokenContract.MyTokenContractPool({
             miningPool: newMining,
             directSalePool: directSalePool,
             investorSalePool: investorSalePool,
@@ -144,47 +144,47 @@ contract MyTokenIsERC20Test is Test {
     }
 
     function test_SetPoolAddress_RevertsWhenMiningPoolIsZero() public {
-        MyTokenIsERC20.MyTokenIsERC20Pool memory pools = _validPools();
+        MyTokenContract.MyTokenContractPool memory pools = _validPools();
         pools.miningPool = address(0);
 
         vm.prank(owner);
-        vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing MiningPool address");
+        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing MiningPool address");
         token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsWhenDirectSalePoolIsZero() public {
-        MyTokenIsERC20.MyTokenIsERC20Pool memory pools = _validPools();
+        MyTokenContract.MyTokenContractPool memory pools = _validPools();
         pools.directSalePool = address(0);
 
         vm.prank(owner);
-        vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing DirectSalePool address");
+        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing DirectSalePool address");
         token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsWhenInvestorSalePoolIsZero() public {
-        MyTokenIsERC20.MyTokenIsERC20Pool memory pools = _validPools();
+        MyTokenContract.MyTokenContractPool memory pools = _validPools();
         pools.investorSalePool = address(0);
 
         vm.prank(owner);
-        vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing InvestorSalePool address");
+        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing InvestorSalePool address");
         token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsWhenEcosystemPoolIsZero() public {
-        MyTokenIsERC20.MyTokenIsERC20Pool memory pools = _validPools();
+        MyTokenContract.MyTokenContractPool memory pools = _validPools();
         pools.ecosystemPool = address(0);
 
         vm.prank(owner);
-        vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing EcosystemPool address");
+        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing EcosystemPool address");
         token.setPoolAddressByOwner(pools);
     }
 
     function test_SetPoolAddress_RevertsWhenFoundationPoolIsZero() public {
-        MyTokenIsERC20.MyTokenIsERC20Pool memory pools = _validPools();
+        MyTokenContract.MyTokenContractPool memory pools = _validPools();
         pools.foundationPool = address(0);
 
         vm.prank(owner);
-        vm.expectRevert("MyTokenIsERC20 _beforePoolAddress: Missing FoundationPool address");
+        vm.expectRevert("MyTokenContract _beforePoolAddress: Missing FoundationPool address");
         token.setPoolAddressByOwner(pools);
     }
 
@@ -192,7 +192,7 @@ contract MyTokenIsERC20Test is Test {
         _configureAndAllocate();
 
         vm.prank(owner);
-        vm.expectRevert("MyTokenIsERC20 _beforePoolAllocation : OHANA is already allocate");
+        vm.expectRevert("MyTokenContract _beforePoolAllocation : OHANA is already allocate");
         token.setPoolAddressByOwner(_validPools());
     }
 
@@ -308,8 +308,8 @@ contract MyTokenIsERC20Test is Test {
     //                         helpers
     // =============================================================
 
-    function _validPools() internal view returns (MyTokenIsERC20.MyTokenIsERC20Pool memory) {
-        return MyTokenIsERC20.MyTokenIsERC20Pool({
+    function _validPools() internal view returns (MyTokenContract.MyTokenContractPool memory) {
+        return MyTokenContract.MyTokenContractPool({
             miningPool: miningPool,
             directSalePool: directSalePool,
             investorSalePool: investorSalePool,
