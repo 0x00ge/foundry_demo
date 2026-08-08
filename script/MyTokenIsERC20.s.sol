@@ -41,10 +41,6 @@ import {MyTokenContract} from "../src/MyTokenContract.sol";
 import {console, Script} from "forge-std/Script.sol";
 
 contract MyTokenIsERC20Script is Script {
-    // =============================================================
-    //                          状态变量
-    // =============================================================
-
     /// @notice 代理管理员；OZ v5 Transparent Proxy 构造时会自动 new ProxyAdmin(initialOwner)
     ProxyAdmin public myTokenProxyAdmin;
 
@@ -53,10 +49,6 @@ contract MyTokenIsERC20Script is Script {
 
     /// @notice 实现合约地址（仅存逻辑，不应直接被用户调用 initialize）
     MyTokenContract public myTokenImplementation;
-
-    // =============================================================
-    //                          入口函数
-    // =============================================================
 
     /**
      * @notice 部署实现合约 + Transparent 代理，并完成 initialize
@@ -123,10 +115,6 @@ contract MyTokenIsERC20Script is Script {
 
         vm.stopBroadcast();
     }
-
-    // =============================================================
-    //                          内部工具
-    // =============================================================
 
     /**
      * @notice 从 ERC1967 标准 admin 槽位读取 ProxyAdmin 地址
