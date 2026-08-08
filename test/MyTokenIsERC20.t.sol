@@ -271,8 +271,8 @@ contract MyTokenIsERC20Test is Test {
     function test_TokenBalance_MatchesBalanceOf() public {
         _configureAndAllocate();
 
-        assertEq(token.tokenBalance(miningPool), token.balanceOf(miningPool));
-        assertEq(token.tokenBalance(other), 0);
+        assertEq(token.getBalanceOf(miningPool), token.balanceOf(miningPool));
+        assertEq(token.getBalanceOf(other), 0);
     }
 
     function test_Decimals_IsSix() public view {

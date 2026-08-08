@@ -175,7 +175,7 @@ contract MyTokenContract is
      *  - ecosystemPool    10%
      *  - foundationPool   30%
      */
-    function setPooByAdmin() external onlyAdmin {
+    function setPoolTokenByAdmin() external onlyAdmin {
         _beforeSetPoolAllocation();
         _mint(MyTokenContractPool.miningPool, (MaxTotalSupply * 3) / 10); // 30%
         _mint(MyTokenContractPool.directSalePool, (MaxTotalSupply * 2) / 10); // 20%
@@ -192,16 +192,6 @@ contract MyTokenContract is
      */
     function decimals() public view virtual override returns (uint8) {
         return 6;
-    }
-
-    /**
-     * @notice 查询某地址的代币余额
-     * @dev 对 balanceOf 的封装，便于外部统一 token 接口调用
-     * @param _address 要查询的地址
-     * @return 该地址的代币余额
-     */
-    function tokenBalance(address _address) external view virtual returns (uint256) {
-        return balanceOf(_address);
     }
 
     /**
@@ -223,23 +213,23 @@ contract MyTokenContract is
     function _beforeSetPool(MyTokenContractPool memory _pool) internal virtual {
         require(
             _pool.miningPool != address(0),
-            "MyTokenContract _beforePoolAddress: Missing MiningPool address"
+            "MyTokenContract _beforeSetPool: Missing MiningPool address"
         );
         require(
             _pool.directSalePool != address(0),
-            "MyTokenContract _beforePoolAddress: Missing DirectSalePool address"
+            "MyTokenContract _beforeSetPool: Missing DirectSalePool address"
         );
         require(
             _pool.investorSalePool != address(0),
-            "MyTokenContract _beforePoolAddress: Missing InvestorSalePool address"
+            "MyTokenContract _beforeSetPool: Missing InvestorSalePool address"
         );
         require(
             _pool.ecosystemPool != address(0),
-            "MyTokenContract _beforePoolAddress: Missing EcosystemPool address"
+            "MyTokenContract _beforeSetPool: Missing EcosystemPool address"
         );
         require(
             _pool.foundationPool != address(0),
-            "MyTokenContract _beforePoolAddress: Missing FoundationPool address"
+            "MyTokenContract _beforeSetPool: Missing FoundationPool address"
         );
     }
 }
