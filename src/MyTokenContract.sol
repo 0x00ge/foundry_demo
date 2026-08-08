@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title MyTokenIsERC20
+ * @title MyTokenContract
  * @notice 可升级的 ERC20 代币合约（基于 OpenZeppelin Upgradeable）
  * @dev
  *  - 使用 Initializable 模式，禁止构造函数初始化，避免实现合约被直接初始化
@@ -32,7 +32,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 
-contract MyTokenIsERC20 is
+contract MyTokenContract is
     Initializable,
     OwnableUpgradeable,
     ERC20Upgradeable,
@@ -47,7 +47,7 @@ contract MyTokenIsERC20 is
      * @param ecosystemPool     生态建设池（10%）
      * @param foundationPool    基金会池（30%）
      */
-    struct MyTokenIsERC20Pool {
+    struct MyTokenContractPool {
         address miningPool;
         address directSalePool;
         address investorSalePool;
@@ -59,7 +59,7 @@ contract MyTokenIsERC20 is
     address public admin;
 
     // 代币全称（initialize 时写入 ERC20 存储）
-    string private constant NAME = "OHANAUSDT";
+    string private constant NAME = "OHANATOKEN";
 
     // 代币符号（initialize 时写入 ERC20 存储）
     string private constant SYMBOL = "OHANA";
@@ -75,7 +75,7 @@ contract MyTokenIsERC20 is
     bool public isAllocation;
 
     // 当前配置的五个资金池地址（需在 poolAllocate 前由 owner 设置）
-    MyTokenIsERC20Pool public myTokenIsERC20Pool;
+    MyTokenContractPool public MyTokenContractPool;
 
     /**
      * @notice admin 地址变更时触发
@@ -88,9 +88,9 @@ contract MyTokenIsERC20 is
      * @notice 资金池地址配置成功时触发
      * @dev struct 作为 indexed 参数时，event topic 中是整个 struct 的 keccak256 哈希，
      *      无法按单个池地址过滤；data 区仍可完整解码
-     * @param _myTokenIsERC20Pool 新的资金池配置
+     * @param _MyTokenContractPool 新的资金池配置
      */
-    event SetPoolAddress(MyTokenIsERC20Pool indexed _myTokenIsERC20Pool);
+    event SetPoolAddress(MyTokenContractPool indexed _MyTokenContractPool);
 
     // =============================================================
     //                          构造函数
@@ -118,7 +118,7 @@ contract MyTokenIsERC20 is
     function initialize(address _owner, address _admin) public initializer {
         require(
             _owner != address(0),
-            "MyTokenIsERC20 initialize : _owner can't be zero address"
+            "MyTokenContract initialize : _owner can't be zero address"
         );
         __ERC20_init(NAME, SYMBOL);
         __ERC20Burnable_init();
@@ -128,10 +128,6 @@ contract MyTokenIsERC20 is
         isAllocation = false;
     }
 
-    // =============================================================
-    //                          修饰器
-    // =============================================================
-
     /**
      * @notice 仅 admin 可调用
      * @dev 与 onlyOwner 区分：owner 管核心配置，admin 管日常业务操作（如 poolAllocate）
@@ -139,14 +135,10 @@ contract MyTokenIsERC20 is
     modifier onlyAdmin() {
         require(
             msg.sender == admin,
-            "MyTokenIsERC20 onlyAdmin : only admin can call this function"
+            "MyTokenContract onlyAdmin : only admin can call this function"
         );
         _;
     }
-
-    // =============================================================
-    //                       外部 / 公共函数
-    // =============================================================
 
     /**
      * @notice 设置 / 更换 admin
@@ -163,13 +155,13 @@ contract MyTokenIsERC20 is
      * @notice 配置五个资金池地址
      * @dev 仅 owner 可调用；要求尚未分配（!isAllocation），且各池地址非零
      *      分配完成前可多次调用以更新配置；分配后不可再改
-     * @param _myTokenIsERC20Pool 资金池地址结构体
+     * @param _MyTokenContractPool 资金池地址结构体
      */
-    function setPoolAddressByOwner(MyTokenIsERC20Pool memory _myTokenIsERC20Pool) external onlyOwner {
+    function setPoolAddressByOwner(MyTokenContractPool memory _MyTokenContractPool) external onlyOwner {
         _beforePoolAllocation();
-        _beforePoolAddress(_myTokenIsERC20Pool);
-        myTokenIsERC20Pool = _myTokenIsERC20Pool;
-        emit SetPoolAddress(_myTokenIsERC20Pool);
+        _beforePoolAddress(_MyTokenContractPool);
+        MyTokenContractPool = _MyTokenContractPool;
+        emit SetPoolAddress(_MyTokenContractPool);
     }
 
     /**
@@ -190,11 +182,11 @@ contract MyTokenIsERC20 is
      */
     function setPoolAllocateByAdmin() external onlyAdmin {
         _beforePoolAllocation();
-        _mint(myTokenIsERC20Pool.miningPool, (MaxTotalSupply * 3) / 10); // 30%
-        _mint(myTokenIsERC20Pool.directSalePool, (MaxTotalSupply * 2) / 10); // 20%
-        _mint(myTokenIsERC20Pool.investorSalePool, MaxTotalSupply / 10); // 10%
-        _mint(myTokenIsERC20Pool.ecosystemPool, MaxTotalSupply / 10); // 10%
-        _mint(myTokenIsERC20Pool.foundationPool, (MaxTotalSupply * 3) / 10); // 30%
+        _mint(MyTokenContractPool.miningPool, (MaxTotalSupply * 3) / 10); // 30%
+        _mint(MyTokenContractPool.directSalePool, (MaxTotalSupply * 2) / 10); // 20%
+        _mint(MyTokenContractPool.investorSalePool, MaxTotalSupply / 10); // 10%
+        _mint(MyTokenContractPool.ecosystemPool, MaxTotalSupply / 10); // 10%
+        _mint(MyTokenContractPool.foundationPool, (MaxTotalSupply * 3) / 10); // 30%
         isAllocation = true;
     }
 
@@ -224,7 +216,7 @@ contract MyTokenIsERC20 is
     function _beforePoolAllocation() internal virtual {
         require(
             !isAllocation,
-            "MyTokenIsERC20 _beforePoolAllocation : OHANA is already allocate"
+            "MyTokenContract _beforePoolAllocation : OHANA is already allocate"
         );
     }
 
@@ -233,26 +225,26 @@ contract MyTokenIsERC20 is
      * @dev 五个池地址均不能为零地址，否则回滚
      * @param _pool 待校验的资金池配置
      */
-    function _beforePoolAddress(MyTokenIsERC20Pool memory _pool) internal virtual {
+    function _beforePoolAddress(MyTokenContractPool memory _pool) internal virtual {
         require(
             _pool.miningPool != address(0),
-            "MyTokenIsERC20 _beforePoolAddress: Missing MiningPool address"
+            "MyTokenContract _beforePoolAddress: Missing MiningPool address"
         );
         require(
             _pool.directSalePool != address(0),
-            "MyTokenIsERC20 _beforePoolAddress: Missing DirectSalePool address"
+            "MyTokenContract _beforePoolAddress: Missing DirectSalePool address"
         );
         require(
             _pool.investorSalePool != address(0),
-            "MyTokenIsERC20 _beforePoolAddress: Missing InvestorSalePool address"
+            "MyTokenContract _beforePoolAddress: Missing InvestorSalePool address"
         );
         require(
             _pool.ecosystemPool != address(0),
-            "MyTokenIsERC20 _beforePoolAddress: Missing EcosystemPool address"
+            "MyTokenContract _beforePoolAddress: Missing EcosystemPool address"
         );
         require(
             _pool.foundationPool != address(0),
-            "MyTokenIsERC20 _beforePoolAddress: Missing FoundationPool address"
+            "MyTokenContract _beforePoolAddress: Missing FoundationPool address"
         );
     }
 }

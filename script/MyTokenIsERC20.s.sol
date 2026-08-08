@@ -37,7 +37,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
-import {MyTokenIsERC20} from "../src/MyTokenIsERC20.sol";
+import {MyTokenIsERC20} from "../src/MyTokenContract.sol";
 import {console, Script} from "forge-std/Script.sol";
 
 contract MyTokenIsERC20Script is Script {

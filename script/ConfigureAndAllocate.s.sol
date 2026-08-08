@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
-import {MyTokenIsERC20} from "../src/MyTokenIsERC20.sol";
+import {MyTokenIsERC20} from "../src/MyTokenContract.sol";
 
 contract ConfigureAndAllocate is Script {
     function run() external {
