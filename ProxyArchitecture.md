@@ -35,6 +35,28 @@
 - 升级由 `ProxyAdmin` 负责
 - 逻辑合约本身不需要实现 `upgradeTo`
 
+### 详细调用过程
+
+1. 部署 `MyTokenContract` 逻辑合约。
+2. 部署 `TransparentUpgradeableProxy`，并指定：
+   - 逻辑合约地址
+   - `ProxyAdmin` 的 owner
+   - `initialize(owner, admin)` 的初始化数据
+3. 代理在构造函数里 `delegatecall` 到 `initialize`。
+4. `initialize` 在代理存储里写入：
+   - 代币名称
+   - 代币符号
+   - `owner`
+   - `admin`
+   - `isAllocation = false`
+5. `owner` 通过代理调用 `setPoolAddressByOwner` 配置五个资金池。
+6. `admin` 通过代理调用 `setPoolTokenByAdmin` 完成一次性铸币和分配。
+7. 普通用户通过代理调用 `transfer`、`approve`、`transferFrom`、`burn` 等 ERC20 函数。
+8. 升级时由 `ProxyAdmin` 发起 `upgradeAndCall`：
+   - 先把实现地址切到新逻辑
+   - 如有初始化数据，再继续执行迁移逻辑
+9. 代理地址始终不变，变化的只有逻辑合约地址。
+
 ## 2. 透明代理示例
 
 这是一个最小透明代理实现，用来理解机制本身。
@@ -67,6 +89,28 @@
 - `fallback` 里用 `delegatecall`
 - 升级只改实现地址，不改代理地址
 
+### 详细调用过程
+
+1. 部署 `TransparentProxyDemoLogic` 作为 V1 逻辑合约。
+2. 部署 `TransparentProxy`，传入：
+   - V1 地址
+   - 代理管理员地址
+   - `initialize(owner, initialValue)` 的编码数据
+3. 代理构造时先写入 `implementation` 和 `admin`。
+4. 代理再对 V1 执行一次 `delegatecall` 初始化。
+5. 普通用户调用 `setValue`、`add`、`transferOwnership` 等函数时：
+   - 代理命中 `fallback`
+   - 校验调用者不是管理员
+   - 把调用原样转发给实现合约
+   - 状态写回代理存储
+6. 代理管理员调用业务函数时会被直接拒绝，不能误走实现合约逻辑。
+7. 升级时管理员调用 `upgradeTo(newImplementation)`：
+   - 校验调用者就是管理员
+   - 校验新实现地址是合约
+   - 更新 EIP-1967 implementation 槽
+8. 升级后代理地址不变，后续所有普通调用都会进入新实现合约。
+9. 如果需要改管理员，管理员调用 `changeAdmin(newAdmin)` 即可。
+
 ## 3. UUPS 示例
 
 UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `ProxyAdmin`。
@@ -97,6 +141,25 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 - 代理只负责转发
 - 升级入口在实现合约里
 - 一般会和 `OwnableUpgradeable` 或自定义权限控制一起用
+
+### 详细调用过程
+
+1. 部署 `UUPSDemoLogic` 作为 V1 实现合约。
+2. 部署 `ERC1967Proxy`，把 V1 地址和 `initialize(owner, initialValue)` 数据一起传入。
+3. 代理构造时执行初始化，把业务状态写进代理存储。
+4. 普通用户通过代理调用 `setValue`、`add` 等函数：
+   - 代理只做转发
+   - 业务逻辑在实现合约里执行
+   - 状态仍然落在代理上
+5. `owner` 调用 `upgradeToAndCall(newImplementation, data)` 时：
+   - 先通过 `onlyProxy` 检查，确认不是直接打到实现合约
+   - 再进入 `_authorizeUpgrade`
+   - `_authorizeUpgrade` 里用 `onlyOwner` 限定升级权限
+   - 权限通过后，执行 UUPS 的安全升级检查
+6. 若新实现合约通过 `proxiableUUID()` 校验，代理切换到新实现地址。
+7. 如果传了升级后的初始化数据，代理会继续执行迁移调用。
+8. 升级完成后，代理地址不变，旧状态保留，新逻辑生效。
+9. 直接对实现合约地址调用 `upgradeToAndCall` 会回滚，因为 UUPS 要求必须通过代理上下文调用。
 
 ## 4. 这三者的区别
 
