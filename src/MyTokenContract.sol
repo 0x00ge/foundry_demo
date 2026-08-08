@@ -93,7 +93,7 @@ contract MyTokenContract is
      * @param ecosystemPool     生态建设池（10%）
      * @param foundationPool    基金会池（30%）
      */
-    struct MyTokenContractPool {
+    struct PoolConfig {
         address miningPool;
         address directSalePool;
         address investorSalePool;
@@ -121,7 +121,7 @@ contract MyTokenContract is
     bool public isAllocation;
 
     // 当前配置的五个资金池地址（必须在调用 setPoolTokenByAdmin 前由 owner 设置）。
-    MyTokenContractPool public MyTokenContractPool;
+    PoolConfig public MyTokenContractPool;
 
     /**
      * @notice 当管理员地址变更时触发。
@@ -136,7 +136,7 @@ contract MyTokenContract is
      *      因此无法按单个池地址过滤；但完整结构体仍可在 data 区解码获取。
      * @param _MyTokenContractPool 新的资金池配置。
      */
-    event SetPool(MyTokenContractPool indexed _MyTokenContractPool);
+    event SetPool(PoolConfig indexed _MyTokenContractPool);
 
     /**
      * @notice 实现合约的构造函数。
@@ -198,7 +198,7 @@ contract MyTokenContract is
      *      在分配前可多次调用以更新配置；分配后将被锁定。
      * @param _MyTokenContractPool 资金池地址结构体。
      */
-    function setPoolAddressByOwner(MyTokenContractPool memory _MyTokenContractPool) external onlyOwner {
+    function setPoolAddressByOwner(PoolConfig memory _MyTokenContractPool) external onlyOwner {
         _beforeSetPoolAllocation();
         _beforeSetPool(_MyTokenContractPool);
         MyTokenContractPool = _MyTokenContractPool;
@@ -256,7 +256,7 @@ contract MyTokenContract is
      * @dev 若有任何地址为零，则回滚。
      * @param _pool 待校验的资金池配置。
      */
-    function _beforeSetPool(MyTokenContractPool memory _pool) internal virtual {
+    function _beforeSetPool(PoolConfig memory _pool) internal virtual {
         require(
             _pool.miningPool != address(0),
             "MyTokenContract _beforeSetPool: Missing MiningPool address"

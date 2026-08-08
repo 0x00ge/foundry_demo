@@ -23,6 +23,9 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";              
  *      或者使用 .env 文件配合 `source .env` 加载
  */
 contract DeployMyToken is Script {
+    bytes32 internal constant ERC1967_ADMIN_SLOT =
+        0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+
     /**
      * @notice Foundry 脚本入口函数
      * @dev 执行前需设置必要的环境变量，否则 vm.envAddress 会报错
@@ -47,10 +50,6 @@ contract DeployMyToken is Script {
         // 它的构造函数中调用了 _disableInitializers()，确保不会被直接初始化。
         MyTokenContract logic = new MyTokenContract();
 
-        // ProxyAdmin 是 OpenZeppelin 的标准管理员合约，负责管理透明代理的升级。
-        // 其 owner 默认为部署者（即当前脚本的发送者）。
-        ProxyAdmin proxyAdmin = new ProxyAdmin();
-
         // 使用 abi.encodeWithSelector 生成 calldata，包含函数选择器和参数。
         // 这样在部署代理时，代理构造函数会执行 delegatecall 到逻辑合约的 initialize 函数。
         bytes memory initData = abi.encodeWithSelector(
@@ -59,30 +58,26 @@ contract DeployMyToken is Script {
             admin
         );
 
-        // TransparentUpgradeableProxy 的构造函数参数：
+        // TransparentUpgradeableProxy 的构造函数参数（OpenZeppelin v5）：
         //   - _logic: 逻辑合约地址
-        //   - admin_: ProxyAdmin 合约地址（负责升级管理）
+        //   - initialOwner: 代理内部 ProxyAdmin 的 owner
         //   - _data: 初始化调用数据（会立即执行 delegatecall）
         // 部署完成后，代理合约将存储逻辑地址、管理员地址以及所有业务状态。
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(logic),
-            address(proxyAdmin),
+            owner,
             initData
         );
 
-        // 默认 ProxyAdmin 的 owner 是部署者（即执行脚本的地址）。
-        // 如果希望 owner 地址拥有升级权限，需要将 ProxyAdmin 的所有权转移给 owner。
-        // 注意：这一步只有在 owner != 部署者时才需要执行。
-        // 若 owner 就是部署者，则可跳过。
-        if (proxyAdmin.owner() != owner) {
-            proxyAdmin.transferOwnership(owner);
-        }
+        // OpenZeppelin v5 的透明代理会在构造函数中自动部署 ProxyAdmin。
+        address proxyAdminAddress = address(uint160(uint256(vm.load(address(proxy), ERC1967_ADMIN_SLOT))));
+        ProxyAdmin proxyAdmin = ProxyAdmin(proxyAdminAddress);
 
         // 将代理地址转换为 MyTokenContract 接口，以便调用其业务函数。
         MyTokenContract token = MyTokenContract(address(proxy));
 
         // 构建资金池结构体，包含从环境变量读取的五个地址。
-        MyTokenContract.MyTokenContractPool memory pool = MyTokenContract.MyTokenContractPool({
+        MyTokenContract.PoolConfig memory pool = MyTokenContract.PoolConfig({
             miningPool: miningPool,
             directSalePool: directSalePool,
             investorSalePool: investorSalePool,
