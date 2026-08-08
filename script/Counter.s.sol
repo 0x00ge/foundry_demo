@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: MIT
-// 优化1：将 UNLICENSED 改为 MIT（如果打算开源）或保留为专有。但 UNLICENSED 不允许链上验证器识别，建议明确指定。
 pragma solidity ^0.8.13;
 
-// ============================================================
-// 导入依赖
-// ============================================================
 import {Script} from "forge-std/Script.sol";
 import {Counter} from "../src/Counter.sol";
-// 优化2：导入 console，方便在终端输出部署地址和关键状态，极大提升调试体验
 import {console} from "forge-std/console.sol";
 
 /**
