@@ -38,8 +38,8 @@ contract MyTokenIsERC20Test is Test {
     function test_Initialize_SetsStateCorrectly() public view {
         assertEq(token.owner(), owner);
         assertEq(token.manager(), manager);
-        assertEq(token.name(), "OHANATOKEN");
-        assertEq(token.symbol(), "OHANA");
+        assertEq(token.name(), "NAME_OHANA");
+        assertEq(token.symbol(), "SYMBOL_OHANA");
         assertEq(token.decimals(), 6);
         assertEq(token.isAllocation(), false);
         assertEq(token.totalSupply(), 0);
