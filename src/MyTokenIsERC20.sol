@@ -6,18 +6,18 @@ pragma solidity ^0.8.20;
  * @notice 可升级的 ERC20 代币合约（基于 OpenZeppelin Upgradeable）
  * @dev
  *  - 使用 Initializable 模式，禁止构造函数初始化，避免实现合约被直接初始化
- *  - 继承 OwnableUpgradeable：owner 拥有最高管理权限（设置 manager、池地址等）
+ *  - 继承 OwnableUpgradeable：owner 拥有最高管理权限（设置 admin、池地址等）
  *  - 继承 ERC20Upgradeable / ERC20BurnableUpgradeable：标准代币 + 销毁能力
- *  - 额外维护 manager 角色与多资金池地址，用于一次性代币分配
+ *  - 额外维护 admin 角色与多资金池地址，用于一次性代币分配
  *
  * 权限分层：
- *  - owner：核心配置（setManager、setPoolAddress）
- *  - manager：业务操作（poolAllocate 执行铸币分配）
+ *  - owner：核心配置（setAdmin、setPoolAddress）
+ *  - admin：业务操作（poolAllocate 执行铸币分配）
  *
  * 生命周期（建议调用顺序）：
- *  1. 代理部署后调用 initialize(owner, manager)
+ *  1. 代理部署后调用 initialize(owner, admin)
  *  2. owner 调用 setPoolAddress 配置五个资金池
- *  3. manager 调用 poolAllocate 按比例铸币到各池（仅一次）
+ *  3. admin 调用 poolAllocate 按比例铸币到各池（仅一次）
  *
  * 分配比例（合计 100%）：
  *  - miningPool        30%
@@ -38,10 +38,6 @@ contract MyTokenIsERC20 is
     ERC20Upgradeable,
     ERC20BurnableUpgradeable
 {
-    // =============================================================
-    //                          数据结构
-    // =============================================================
-
     /**
      * @notice 代币分配相关的五个资金池地址
      * @dev 用于 poolAllocate 将代币按业务场景一次性铸币到不同池子
@@ -59,17 +55,13 @@ contract MyTokenIsERC20 is
         address foundationPool;
     }
 
-    // =============================================================
-    //                          状态变量
-    // =============================================================
+    // 业务管理员地址；仅 admin 可调用带 onlyAdmin 的函数（如 poolAllocate）
+    address public admin;
 
-    /// @notice 业务管理员地址；仅 manager 可调用带 onlyManager 的函数（如 poolAllocate）
-    address public manager;
+    // 代币全称（initialize 时写入 ERC20 存储）
+    string private constant NAME = "OHANAUSDT";
 
-    /// @dev 代币全称（initialize 时写入 ERC20 存储）
-    string private constant NAME = "MyTokenIsERC20USDT";
-
-    /// @dev 代币符号（initialize 时写入 ERC20 存储）
+    // 代币符号（initialize 时写入 ERC20 存储）
     string private constant SYMBOL = "OHANA";
 
     /**
@@ -79,22 +71,18 @@ contract MyTokenIsERC20 is
      */
     uint256 private constant MaxTotalSupply = 1_000_000_000 * 10 ** 6;
 
-    /// @notice 是否已完成代币分配；为 true 后不可再 setPoolAddress / poolAllocate
+    // 是否已完成代币分配；为 true 后不可再 setPoolAddress / poolAllocate
     bool public isAllocation;
 
-    /// @notice 当前配置的五个资金池地址（需在 poolAllocate 前由 owner 设置）
+    // 当前配置的五个资金池地址（需在 poolAllocate 前由 owner 设置）
     MyTokenIsERC20Pool public myTokenIsERC20Pool;
 
-    // =============================================================
-    //                            事件
-    // =============================================================
-
     /**
-     * @notice manager 地址变更时触发
-     * @param _newAddress 新的 manager 地址（indexed，便于按地址过滤日志）
-     * @param _oldAddress 旧的 manager 地址
+     * @notice admin 地址变更时触发
+     * @param _newAddress 新的 admin 地址（indexed，便于按地址过滤日志）
+     * @param _oldAddress 旧的 admin 地址
      */
-    event SetManager(address indexed _newAddress, address _oldAddress);
+    event SetAdmin(address indexed _newAddress, address _oldAddress);
 
     /**
      * @notice 资金池地址配置成功时触发
@@ -123,11 +111,11 @@ contract MyTokenIsERC20 is
      *  - initializer 修饰器保证只初始化一次
      *  - 依次初始化 ERC20、Burnable、Ownable
      *  - __Ownable_init(_owner) 内部已设置 owner；此处额外调用 _transferOwnership 为冗余，可保留作显式强调
-     *  - 设置 manager，并将 isAllocation 置为 false
+     *  - 设置 admin，并将 isAllocation 置为 false
      * @param _owner   合约 owner（不可为零地址）
-     * @param _manager 初始 manager 地址（当前未校验非零，调用方需自行保证）
+     * @param _admin 初始 admin 地址（当前未校验非零，调用方需自行保证）
      */
-    function initialize(address _owner, address _manager) public initializer {
+    function initialize(address _owner, address _admin) public initializer {
         require(
             _owner != address(0),
             "MyTokenIsERC20 initialize : _owner can't be zero address"
@@ -136,7 +124,7 @@ contract MyTokenIsERC20 is
         __ERC20Burnable_init();
         __Ownable_init(_owner);
         _transferOwnership(_owner);
-        manager = _manager;
+        admin = _admin;
         isAllocation = false;
     }
 
@@ -145,15 +133,14 @@ contract MyTokenIsERC20 is
     // =============================================================
 
     /**
-     * @notice 仅 manager 可调用
-     * @dev 与 onlyOwner 区分：owner 管核心配置，manager 管日常业务操作（如 poolAllocate）
+     * @notice 仅 admin 可调用
+     * @dev 与 onlyOwner 区分：owner 管核心配置，admin 管日常业务操作（如 poolAllocate）
      */
-    modifier onlyManager() {
+    modifier onlyAdmin() {
         require(
-            msg.sender == manager,
-            "MyTokenIsERC20 onlyManager : only manager can call this function"
+            msg.sender == admin,
+            "MyTokenIsERC20 onlyAdmin : only admin can call this function"
         );
-        // 特殊占位符，表示「把被修饰函数的代码插入到这里」。
         _;
     }
 
@@ -162,15 +149,14 @@ contract MyTokenIsERC20 is
     // =============================================================
 
     /**
-     * @notice 设置 / 更换 manager
-     * @dev 仅 owner 可调用；当前允许设为零地址（将导致 onlyManager 函数无人可调），调用方需谨慎
-     * @param _manager 新的 manager 地址
+     * @notice 设置 / 更换 admin
+     * @dev 仅 owner 可调用；当前允许设为零地址（将导致 onlyAdmin 函数无人可调），调用方需谨慎
+     * @param _admin 新的 admin 地址
      */
-    function setManagerByOwner(address _manager) external onlyOwner {
-        address oldAddress = manager;
-        manager = _manager;
-        // 状态变更应抛出 event，方便链下索引与审计
-        emit SetManager(_manager, oldAddress);
+    function setAdminByOwner(address _admin) external onlyOwner {
+        address oldAddress = admin;
+        admin = _admin;
+        emit SetAdmin(_admin, oldAddress);
     }
 
     /**
@@ -183,14 +169,13 @@ contract MyTokenIsERC20 is
         _beforePoolAllocation();
         _beforePoolAddress(_myTokenIsERC20Pool);
         myTokenIsERC20Pool = _myTokenIsERC20Pool;
-        // 状态变更应抛出 event，方便链下索引与审计
         emit SetPoolAddress(_myTokenIsERC20Pool);
     }
 
     /**
      * @notice 按预设比例向五个资金池一次性铸币分配
      * @dev
-     *  - 仅 manager 可调用
+     *  - 仅 admin 可调用
      *  - 要求尚未分配（!isAllocation）
      *  - 不在此函数内再次校验池地址；调用前必须先 setPoolAddress
      *    （若池地址仍为 0，_mint 到零地址会按 OZ ERC20 规则回滚）
@@ -203,8 +188,7 @@ contract MyTokenIsERC20 is
      *  - ecosystemPool    10%
      *  - foundationPool   30%
      */
-    function setPoolAllocateByManager() external onlyManager {
-        // modifier onlyManager() {没有 _;}，function setPoolAllocateByManager() {函数体就是空的}
+    function setPoolAllocateByAdmin() external onlyAdmin {
         _beforePoolAllocation();
         _mint(myTokenIsERC20Pool.miningPool, (MaxTotalSupply * 3) / 10); // 30%
         _mint(myTokenIsERC20Pool.directSalePool, (MaxTotalSupply * 2) / 10); // 20%
@@ -232,10 +216,6 @@ contract MyTokenIsERC20 is
     function tokenBalance(address _address) external view virtual returns (uint256) {
         return balanceOf(_address);
     }
-
-    // =============================================================
-    //                         内部函数
-    // =============================================================
 
     /**
      * @notice 分配前检查：确保尚未完成分配
