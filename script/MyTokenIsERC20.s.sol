@@ -28,9 +28,7 @@ contract DeployMyToken is Script {
      * @dev 执行前需设置必要的环境变量，否则 vm.envAddress 会报错
      */
     function run() external {
-        // ============================================================
         //  1. 从环境变量读取参数
-        // ============================================================
         // vm.envAddress 会从当前环境变量中读取对应名称的十六进制地址字符串
         address owner = vm.envAddress("OWNER_ADDR");      // 合约的 Owner（建议为多签钱包地址）
         address admin = vm.envAddress("ADMIN_ADDR");      // 业务管理员（执行分配操作）
