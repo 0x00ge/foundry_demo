@@ -26,25 +26,25 @@ contract TransparentProxy {
     bytes32 private constant _ADMIN_SLOT =
         0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
-    /// @notice 当管理员尝试走普通业务调用路径时抛出。
+    // 当管理员尝试走普通业务调用路径时抛出。
     error AdminCannotFallback();
 
-    /// @notice 当调用者不是代理管理员时抛出。
+    // 当调用者不是代理管理员时抛出。
     error NotAdmin();
 
-    /// @notice 当传入零地址时抛出。
+    // 当传入零地址时抛出。
     error ZeroAddress();
 
-    /// @notice 当新实现地址不是合约时抛出。
+    // 当新实现地址不是合约时抛出。
     error NotAContract();
 
-    /// @notice 当 delegatecall 初始化失败时抛出。
+    // 当 delegatecall 初始化失败时抛出。
     error InitializationFailed();
 
-    /// @notice 实现合约升级后触发。
+    // 实现合约升级后触发。
     event Upgraded(address indexed implementation);
 
-    /// @notice 管理员地址变更后触发。
+    // 管理员地址变更后触发。
     event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
 
     /**
