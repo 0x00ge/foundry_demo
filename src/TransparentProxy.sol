@@ -56,19 +56,19 @@ contract TransparentProxy {
      * 构造时会先写入 admin 和 implementation，再把 data 透传给实现合约做一次 delegatecall。
      * 这样代理一部署完，业务状态就已经完成初始化。
      */
-    constructor(address implementation_, address admin_, bytes memory data) payable {
-        if (implementation_ == address(0) || admin_ == address(0)) {
+    constructor(address _implementation, address _admin, bytes memory data) payable {
+        if (_implementation == address(0) || _admin == address(0)) {
             revert ZeroAddress();
         }
-        if (implementation_.code.length == 0) {
+        if (_implementation.code.length == 0) {
             revert NotAContract();
         }
 
-        _setAdmin(admin_);
-        _setImplementation(implementation_);
+        _setAdmin(_admin);
+        _setImplementation(_implementation);
 
         if (data.length > 0) {
-            _delegateCall(implementation_, data);
+            _delegateCall(_implementation, data);
         }
     }
 
