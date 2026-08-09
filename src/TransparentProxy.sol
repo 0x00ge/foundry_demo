@@ -73,20 +73,6 @@ contract TransparentProxy {
     }
 
     /**
-     * @notice 升级到新的实现合约。
-     * @dev 只有管理员可以调用，且新地址必须是合约。
-     * @param newImplementation 新实现合约地址。
-     */
-    function upgradeTo(address newImplementation) external {
-        if (msg.sender != _admin()) revert NotAdmin();
-        if (newImplementation == address(0)) revert ZeroAddress();
-        if (newImplementation.code.length == 0) revert NotAContract();
-
-        _setImplementation(newImplementation);
-        emit Upgraded(newImplementation);
-    }
-
-    /**
      * @notice 变更代理管理员。
      * @dev 只有当前管理员可以调用。
      * @param newAdmin 新管理员地址。
@@ -98,6 +84,20 @@ contract TransparentProxy {
         address previousAdmin = _admin();
         _setAdmin(newAdmin);
         emit AdminChanged(previousAdmin, newAdmin);
+    }
+
+    /**
+     * @notice 升级到新的实现合约。
+     * @dev 只有管理员可以调用，且新地址必须是合约。
+     * @param _newImplementation 新实现合约地址。
+     */
+    function upgradeTo(address _newImplementation) external {
+        if (msg.sender != _admin()) revert NotAdmin();
+        if (_newImplementation == address(0)) revert ZeroAddress();
+        if (_newImplementation.code.length == 0) revert NotAContract();
+
+        _setImplementation(_newImplementation);
+        emit Upgraded(_newImplementation);
     }
 
     /**
@@ -148,18 +148,18 @@ contract TransparentProxy {
     /**
      * @dev 写入实现合约地址。
      */
-    function _setImplementation(address newImplementation) internal {
+    function _setImplementation(address _newImplementation) internal {
         assembly {
-            sstore(_IMPLEMENTATION_SLOT, newImplementation)
+            sstore(_IMPLEMENTATION_SLOT, _newImplementation)
         }
     }
 
     /**
      * @dev 写入管理员地址。
      */
-    function _setAdmin(address newAdmin) internal {
+    function _setAdmin(address _newAdmin) internal {
         assembly {
-            sstore(_ADMIN_SLOT, newAdmin)
+            sstore(_ADMIN_SLOT, _newAdmin)
         }
     }
 
@@ -169,11 +169,11 @@ contract TransparentProxy {
      *      - calldata 不做任何改写
      *      - 返回值和 revert data 也完整透传
      */
-    function _delegate(address implementation_) internal {
+    function _delegate(address _implementation) internal {
         assembly {
             calldatacopy(0, 0, calldatasize())
 
-            let result := delegatecall(gas(), implementation_, 0, calldatasize(), 0, 0)
+            let result := delegatecall(gas(), _implementation, 0, calldatasize(), 0, 0)
             let size := returndatasize()
 
             returndatacopy(0, 0, size)
@@ -192,8 +192,8 @@ contract TransparentProxy {
      * @dev 构造阶段用的 delegatecall。
      *      如果初始化失败，要把实现合约的报错原样抛回去，方便排查。
      */
-    function _delegateCall(address implementation_, bytes memory data) internal {
-        (bool success, bytes memory returndata) = implementation_.delegatecall(data);
+    function _delegateCall(address _implementation, bytes memory _data) internal {
+        (bool success, bytes memory returndata) = _implementation.delegatecall(_data);
         if (!success) {
             if (returndata.length == 0) revert InitializationFailed();
             assembly {
