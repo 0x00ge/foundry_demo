@@ -14,11 +14,8 @@ import {UUPSDemoLogicV1} from "./UUPSDemoLogicV1.sol";
  * - 新逻辑已经生效
  */
 contract UUPSDemoLogicV2 is UUPSDemoLogicV1 {
-    /**
-     * @notice 返回当前实现版本号。
-     * @dev 这是最轻量的升级验证方式。
-     */
-    function version() external pure returns (uint256) {
-        return 2;
+
+    function _setVersion() internal virtual {
+        value = 2;
     }
 }

@@ -18,7 +18,9 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  * - value：一个简单数值，方便验证代理存储是否正确
  */
 contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
-    /// @notice 一个简单数值，用来验证代理存储是否正确。
+
+    uint256 public version;
+
     uint256 public value;
 
     /**
@@ -38,25 +40,24 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
      * 真正执行 initialize 的地方是代理地址。
      * 初始化完成后，状态会写进代理自己的存储，而不是写进逻辑合约地址。
      */
-    function initialize(address initialOwner, uint256 initialValue) public initializer {
+    function initialize(address initialOwner) public initializer {
         __Ownable_init(initialOwner);
-        value = initialValue;
+        version = 1;
+    }
+
+    /**
+     * @notice 设置版本。
+     * @dev 内部钩子函数，用于在升级到新实现合约时更新版本号。
+     */
+    function _setVersion() internal virtual {
     }
 
     /**
      * @notice 设置数值。
      * @dev 只有 owner 可以改，方便测试访问控制。
      */
-    function setValue(uint256 newValue) external onlyOwner {
+    function setValue(uint256 newValue) external view {
         value = newValue;
-    }
-
-    /**
-     * @notice 在当前数值基础上叠加一个增量。
-     * @dev 用来测试普通业务调用路径。
-     */
-    function add(uint256 delta) external onlyOwner {
-        value += delta;
     }
 
     /**
@@ -65,6 +66,5 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
      * @param newImplementation 新实现地址。
      */
     function _authorizeUpgrade(address newImplementation) internal view override onlyOwner {
-        newImplementation;
     }
 }
