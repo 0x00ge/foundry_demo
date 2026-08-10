@@ -38,8 +38,7 @@ contract TransparentProxyTest is Test {
 
         logicV1 = new TransparentProxyDemoLogicV1();
 
-        bytes memory initData =
-            abi.encodeWithSelector(TransparentProxyDemoLogicV1.initialize.selector, owner, uint256(7));
+        bytes memory initData = abi.encodeWithSelector(TransparentProxyDemoLogicV1.initialize.selector, owner);
 
         proxy = new TransparentUpgradeableProxy(address(logicV1), owner, initData);
         proxyAdmin = ProxyAdmin(address(uint160(uint256(vm.load(address(proxy), ADMIN_SLOT)))));
@@ -65,7 +64,8 @@ contract TransparentProxyTest is Test {
      */
     function test_InitializeThroughProxy() public {
         assertEq(app.owner(), owner);
-        assertEq(app.value(), 7);
+        assertEq(app.value(), 0);
+        assertEq(app.version(), "TransparentProxyDemoLogicV1");
     }
 
     /**
@@ -73,7 +73,7 @@ contract TransparentProxyTest is Test {
      */
     function test_DirectImplementationInitializeReverts() public {
         vm.expectRevert(abi.encodeWithSignature("InvalidInitialization()"));
-        logicV1.initialize(owner, 99);
+        logicV1.initialize(owner);
     }
 
     /**
@@ -83,7 +83,7 @@ contract TransparentProxyTest is Test {
         TransparentProxyDemoLogicV2 logicV2 = new TransparentProxyDemoLogicV2();
 
         vm.expectRevert(abi.encodeWithSignature("InvalidInitialization()"));
-        logicV2.initialize(owner, 99);
+        logicV2.initialize(owner);
     }
 
     /**
@@ -91,7 +91,7 @@ contract TransparentProxyTest is Test {
      */
     function test_ProxyCannotInitializeTwice() public {
         vm.expectRevert(abi.encodeWithSignature("InvalidInitialization()"));
-        app.initialize(owner, 99);
+        app.initialize(owner);
     }
 
     /**
@@ -120,7 +120,7 @@ contract TransparentProxyTest is Test {
     function test_ImplementationAccessControlStillWorks() public {
         vm.prank(otherUser);
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", otherUser));
-        app.add(5);
+        app.add1();
     }
 
     /**
@@ -137,8 +137,12 @@ contract TransparentProxyTest is Test {
 
         TransparentProxyDemoLogicV2 upgradedApp = TransparentProxyDemoLogicV2(address(proxy));
         assertEq(upgradedApp.value(), 21);
-        assertEq(upgradedApp.version(), 2);
+        assertEq(upgradedApp.version(), "TransparentProxyDemoLogicV1");
         assertEq(upgradedApp.owner(), owner);
+
+        vm.prank(owner);
+        upgradedApp.add2();
+        assertEq(upgradedApp.value(), 23);
     }
 
     /**

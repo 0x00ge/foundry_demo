@@ -73,7 +73,8 @@
 
 - 部署 `TransparentProxyDemoLogicV1`
 - 用 `TransparentUpgradeableProxy` 包一层
-- 构造时把 `initialize` 的 calldata 一起传进去
+- 构造时把 `initialize(owner)` 的 calldata 一起传进去
+- V1 的 `value` 从默认值 `0` 开始
 - 代理构造时自动创建 `ProxyAdmin`
 - 通过代理调用业务函数
 
@@ -97,10 +98,10 @@
 2. 部署 `TransparentUpgradeableProxy`，传入：
    - V1 地址
    - `ProxyAdmin` owner 地址
-   - `initialize(owner, initialValue)` 的编码数据
+   - `initialize(owner)` 的编码数据
 3. 代理构造时部署并记录 `ProxyAdmin`。
-4. 代理再对 V1 执行一次 `delegatecall` 初始化，把 owner 和 value 写入代理存储。
-5. 普通用户调用 `setValue`、`add`、`transferOwnership` 等函数时：
+4. 代理再对 V1 执行一次 `delegatecall` 初始化，把 owner 和 version 写入代理存储，value 保持为 0。
+5. 普通用户调用 `setValue`、`add1` 等函数时：
    - 代理命中 `fallback`
    - 校验调用者不是 `ProxyAdmin`
    - 把调用原样转发给实现合约
@@ -110,7 +111,7 @@
    - `ProxyAdmin` 校验调用者是 owner
    - 代理校验调用者是自己的 admin
    - 更新 EIP-1967 implementation 槽
-8. 升级后代理地址不变，后续所有普通调用都会进入新实现合约。
+8. 升级后代理地址不变，后续所有普通调用都会进入新实现合约；本示例可通过 V2 的 `add2` 验证新逻辑已生效。
 9. 如果需要转移升级权限，当前 `ProxyAdmin` owner 调用 `transferOwnership(newOwner)`。
 
 ## 3. UUPS 示例
