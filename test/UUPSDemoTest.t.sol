@@ -20,6 +20,8 @@ contract UUPSDemoTest is Test {
         0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
     bytes4 internal constant UUPS_UNAUTHORIZED_CALL_CONTEXT =
         bytes4(keccak256("UUPSUnauthorizedCallContext()"));
+    bytes4 internal constant INVALID_INITIALIZATION =
+        bytes4(keccak256("InvalidInitialization()"));
 
     address internal owner;
     address internal otherUser;
@@ -61,6 +63,22 @@ contract UUPSDemoTest is Test {
     function test_InitializeThroughProxy() public {
         assertEq(app.owner(), owner);
         assertEq(app.value(), 11);
+    }
+
+    /**
+     * @notice 实现合约自身不能被独立初始化。
+     */
+    function test_DirectImplementationInitializeReverts() public {
+        vm.expectRevert(INVALID_INITIALIZATION);
+        logicV1.initialize(owner, 99);
+    }
+
+    /**
+     * @notice 代理地址只能初始化一次。
+     */
+    function test_ProxyCannotInitializeTwice() public {
+        vm.expectRevert(INVALID_INITIALIZATION);
+        app.initialize(owner, 99);
     }
 
     /**

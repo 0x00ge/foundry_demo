@@ -71,6 +71,22 @@ contract TransparentProxyTest is Test {
     }
 
     /**
+     * @notice 实现合约自身不能被独立初始化。
+     */
+    function test_DirectImplementationInitializeReverts() public {
+        vm.expectRevert(TransparentProxyDemoLogic.AlreadyInitialized.selector);
+        logicV1.initialize(owner, 99);
+    }
+
+    /**
+     * @notice 代理地址只能初始化一次。
+     */
+    function test_ProxyCannotInitializeTwice() public {
+        vm.expectRevert(TransparentProxyDemoLogic.AlreadyInitialized.selector);
+        app.initialize(owner, 99);
+    }
+
+    /**
      * @notice 普通用户可以正常走 delegatecall，业务状态会写回代理。
      */
     function test_UserCanCallImplementationThroughProxy() public {

@@ -22,11 +22,20 @@ contract UUPSDemoLogic is OwnableUpgradeable, UUPSUpgradeable {
     uint256 public value;
 
     /**
-     * @notice 初始化函数，只能调用一次。
+     * @notice 锁定实现合约自身的初始化状态。
+     * @dev 代理拥有独立存储，因此仍可通过代理执行 initialize。
+     */
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
+     * @notice 通过代理执行的初始化函数，只能调用一次。
      * @param initialOwner 初始 owner。
      * @param initialValue 初始数值。
      * @dev
-     * 由于是 UUPS + ERC1967Proxy 组合，真正执行 initialize 的地方是代理地址。
+     * 实现合约自身已在构造时禁用初始化。由于是 UUPS + ERC1967Proxy 组合，
+     * 真正执行 initialize 的地方是代理地址。
      * 初始化完成后，状态会写进代理自己的存储，而不是写进逻辑合约地址。
      */
     function initialize(address initialOwner, uint256 initialValue) public initializer {

@@ -34,10 +34,19 @@ contract TransparentProxyDemoLogic {
     error ZeroAddress();
 
     /**
-     * @notice 初始化逻辑合约状态。
+     * @notice 锁定实现合约自身的初始化状态。
+     * @dev 构造函数只修改实现合约的存储，不影响代理的独立存储。
+     *      代理部署时仍会通过 delegatecall 在代理上下文中执行 initialize。
+     */
+    constructor() {
+        initialized = true;
+    }
+
+    /**
+     * @notice 通过代理初始化业务状态。
      * @param owner_ 业务 owner。
      * @param initialValue 初始数值。
-     * @dev 只能初始化一次。
+     * @dev 只能在代理存储中成功初始化一次；实现合约自身已在构造时锁定。
      */
     function initialize(address owner_, uint256 initialValue) external {
         if (initialized) revert AlreadyInitialized();
