@@ -8,16 +8,23 @@ import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
  * @title UUPSDemoTest
- * @notice 最小 UUPS 测试集。
+ * @notice UUPS 生产级最小测试集。
  * @dev
- * 重点覆盖三件事：
- * 1. ERC1967Proxy 部署后，初始化状态是否写入代理存储
- * 2. 业务调用是否正常透传到实现合约
- * 3. owner 能否通过 UUPS 方式升级到 V2，且旧状态是否保留
+ * 测试同时验证代理上下文和实现合约上下文：
+ * 1. ERC1967Proxy 部署后，initialize 是否写入代理存储
+ * 2. 实现地址和代理地址是否分别受到初始化保护
+ * 3. 普通业务调用和 owner 权限是否通过 delegatecall 正常工作
+ * 4. owner 能否通过 UUPS 升级，并在同一笔交易里完成 V2 迁移
+ * 5. onlyProxy、onlyOwner 和 proxiableUUID 防护是否生效
  */
 contract UUPSDemoTest is Test {
+    // EIP-1967 implementation 槽位：代理只从这里读取当前实现地址。
     bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
+    // UUPSUpgradeable 在直接调用实现合约或通过代理调用 proxiableUUID 时使用的上下文错误。
     bytes4 internal constant UUPS_UNAUTHORIZED_CALL_CONTEXT = bytes4(keccak256("UUPSUnauthorizedCallContext()"));
+
+    // Initializable 在初始化版本不满足要求时抛出的错误。
     bytes4 internal constant INVALID_INITIALIZATION = bytes4(keccak256("InvalidInitialization()"));
 
     address internal owner;
@@ -31,11 +38,14 @@ contract UUPSDemoTest is Test {
         owner = address(0xB0B);
         otherUser = address(0xC0C);
 
+        // logicV1 只存放代码；构造函数会禁用 logicV1 自身的 initialize。
         logicV1 = new UUPSDemoLogicV1();
 
-        bytes memory initData = abi.encodeWithSelector(UUPSDemoLogicV1.initialize.selector, owner, uint256(11));
+        // 初始化 calldata 会在 ERC1967Proxy 构造期间 delegatecall 到 logicV1。
+        bytes memory initData = abi.encodeWithSelector(UUPSDemoLogicV1.initialize.selector, owner);
 
         proxy = new ERC1967Proxy(address(logicV1), initData);
+        // 后续所有业务调用都通过 proxy 地址进入实现合约。
         app = UUPSDemoLogicV1(address(proxy));
     }
 
@@ -53,7 +63,8 @@ contract UUPSDemoTest is Test {
      */
     function test_InitializeThroughProxy() public {
         assertEq(app.owner(), owner);
-        assertEq(app.value(), 11);
+        assertEq(app.value(), 0);
+        assertEq(app.version(), "UUPSDemoLogicV1");
     }
 
     /**
@@ -61,7 +72,7 @@ contract UUPSDemoTest is Test {
      */
     function test_DirectImplementationInitializeReverts() public {
         vm.expectRevert(INVALID_INITIALIZATION);
-        logicV1.initialize(owner, 99);
+        logicV1.initialize(owner);
     }
 
     /**
@@ -71,7 +82,10 @@ contract UUPSDemoTest is Test {
         UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
 
         vm.expectRevert(INVALID_INITIALIZATION);
-        logicV2.initialize(owner, 99);
+        logicV2.initialize(owner);
+
+        vm.expectRevert(INVALID_INITIALIZATION);
+        logicV2.initializeV2();
     }
 
     /**
@@ -79,7 +93,7 @@ contract UUPSDemoTest is Test {
      */
     function test_ProxyCannotInitializeTwice() public {
         vm.expectRevert(INVALID_INITIALIZATION);
-        app.initialize(owner, 99);
+        app.initialize(owner);
     }
 
     /**
@@ -111,11 +125,12 @@ contract UUPSDemoTest is Test {
         UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
 
         vm.prank(owner);
-        app.upgradeToAndCall(address(logicV2), "");
+        bytes memory migrationData = abi.encodeWithSelector(UUPSDemoLogicV2.initializeV2.selector);
+        app.upgradeToAndCall(address(logicV2), migrationData);
 
         UUPSDemoLogicV2 upgradedApp = UUPSDemoLogicV2(address(proxy));
         assertEq(upgradedApp.value(), 21);
-        assertEq(upgradedApp.version(), 2);
+        assertEq(upgradedApp.version(), "UUPSDemoLogicV2");
         assertEq(upgradedApp.owner(), owner);
     }
 

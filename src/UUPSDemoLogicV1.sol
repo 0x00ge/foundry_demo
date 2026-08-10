@@ -6,39 +6,47 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 
 /**
  * @title UUPSDemoLogicV1
- * @notice 一个最小可用的 UUPS 实现合约（V1）。
+ * @notice 一个生产级最小 UUPS 实现合约（V1）。
  * @dev
- * UUPS 的特点是：
- * 1. 代理本体只负责转发，不单独放一个 ProxyAdmin。
- * 2. 升级逻辑写在实现合约里，由实现合约自己决定谁有权限升级。
- * 3. 真正升级时，调用的是实现合约暴露出来的 `upgradeToAndCall`。
+ * UUPS 的职责分工如下：
+ * 1. ERC1967Proxy 只负责把调用转发到 implementation 槽位指向的实现合约。
+ * 2. 升级入口和升级权限写在实现合约中，不需要单独部署 ProxyAdmin。
+ * 3. owner 通过代理调用 upgradeToAndCall，UUPSUpgradeable 会完成上下文、
+ *    新实现兼容性和升级落槽检查。
  *
- * 这个 V1 只保留最少的业务状态：
- * - owner：业务管理员
- * - value：一个简单数值，方便验证代理存储是否正确
+ * 存储规则：
+ * - owner 由 OwnableUpgradeable 管理，实际写入代理存储。
+ * - version/value 是业务状态，也写入代理存储。
+ * - 新版本只能在末尾追加状态，不能调整已有变量或继承顺序。
  */
 contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
-
+    /// @notice 当前业务实现版本，实际状态保存在代理地址。
     string public version;
 
+    /// @notice 一个简单数值，用于验证升级前后的代理状态保持不变。
     uint256 public value;
 
     /**
-     * @notice 锁定实现合约自身的初始化状态。
-     * @dev 代理拥有独立存储，因此仍可通过代理执行 initialize。
+     * @notice 禁止直接初始化实现合约。
+     * @dev
+     * 实现合约和代理合约拥有不同的存储。这里只锁定实现合约自己的存储，
+     * 不会影响 ERC1967Proxy 在代理存储中执行 initialize。
+     *
+     * 如果实现合约可以被直接初始化，攻击者可能取得实现合约上的 owner，
+     * 进而误导依赖实现地址的业务或运维流程。因此所有实现合约都应锁定初始化。
      */
     constructor() {
         _disableInitializers();
     }
 
     /**
-     * @notice 通过代理执行的初始化函数，只能调用一次。
+     * @notice 通过代理执行 V1 初始化。
      * @param initialOwner 初始 owner。
-     * @param initialValue 初始数值。
      * @dev
-     * 实现合约自身已在构造时禁用初始化。由于是 UUPS + ERC1967Proxy 组合，
-     * 真正执行 initialize 的地方是代理地址。
-     * 初始化完成后，状态会写进代理自己的存储，而不是写进逻辑合约地址。
+     * `initializer` 将初始化版本标记为 1，只允许代理存储成功执行一次。
+     * 代理构造时传入的 calldata 会通过 delegatecall 执行本函数，
+     * 因此这里的 address(this) 是代理地址，owner 和 version 都会写入代理。
+     * value 不在初始化阶段设置，使用 Solidity 默认值 0。
      */
     function initialize(address initialOwner) public initializer {
         __Ownable_init(initialOwner);
@@ -46,26 +54,39 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
-     * @notice 设置版本。
-     * @dev 内部钩子函数，用于在升级到新实现合约时更新版本号。
+     * @notice 设置当前实现版本。
+     * @dev 使用 virtual 让 V2 在 reinitializer(2) 中复用这段逻辑。
+     *      该函数只修改代理存储中的 version，不修改 implementation 槽位。
      */
     function _setVersion() internal virtual {
         version = "UUPSDemoLogicV1";
     }
 
     /**
-     * @notice 设置数值。
-     * @dev 只有 owner 可以改，方便测试访问控制。
+     * @notice 设置业务数值。
+     * @dev 只有代理存储中的 owner 可以修改。
      */
-    function setValue(uint256 newValue) external {
+    function setValue(uint256 newValue) external onlyOwner {
         value = newValue;
     }
 
     /**
+     * @notice 在当前业务数值上增加增量。
+     * @dev 这是普通业务函数，用来验证升级前后代理状态和权限仍然有效。
+     */
+    function add(uint256 delta) external onlyOwner {
+        value += delta;
+    }
+
+    /**
      * @notice UUPS 升级授权钩子。
-     * @dev 只有 owner 才能升级实现合约。
+     * @dev
+     * UUPSUpgradeable 会在执行升级前调用本函数。
+     * `onlyOwner` 使用的是代理存储中的 owner，因此直接调用实现合约不会获得升级权限。
      * @param newImplementation 新实现地址。
      */
     function _authorizeUpgrade(address newImplementation) internal view override onlyOwner {
+        // 参数由 UUPSUpgradeable 用于后续兼容性检查，这里只负责权限判断。
+        newImplementation;
     }
 }

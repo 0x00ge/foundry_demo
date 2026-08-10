@@ -129,8 +129,8 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 
 - 部署 `UUPSDemoLogicV1`
 - 用 `ERC1967Proxy` 包一层
-- 在代理构造时完成 `initialize`
-- 通过实现合约暴露的 `upgradeToAndCall` 完成升级
+- 在代理构造时完成 `initialize(owner)`，业务数值从默认值 `0` 开始
+- 通过实现合约暴露的 `upgradeToAndCall` 完成升级和 V2 迁移
 
 ### UUPS 规则
 
@@ -148,7 +148,7 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 ### 详细调用过程
 
 1. 部署 `UUPSDemoLogicV1` 作为 V1 实现合约。
-2. 部署 `ERC1967Proxy`，把 V1 地址和 `initialize(owner, initialValue)` 数据一起传入。
+2. 部署 `ERC1967Proxy`，把 V1 地址和 `initialize(owner)` 数据一起传入。
 3. 代理构造时执行初始化，把业务状态写进代理存储。
 4. 普通用户通过代理调用 `setValue`、`add` 等函数：
    - 代理只做转发
@@ -160,7 +160,8 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
    - `_authorizeUpgrade` 里用 `onlyOwner` 限定升级权限
    - 权限通过后，执行 UUPS 的安全升级检查
 6. 若新实现合约通过 `proxiableUUID()` 校验，代理切换到新实现地址。
-7. 如果传了升级后的初始化数据，代理会继续执行迁移调用。
+7. 本示例把 `initializeV2()` 编码后作为 `upgradeToAndCall` 的 data，
+   在同一笔交易中完成实现切换和 V2 的 `reinitializer(2)` 迁移。
 8. 升级完成后，代理地址不变，旧状态保留，新逻辑生效。
 9. 直接对实现合约地址调用 `initialize` 或 `upgradeToAndCall` 会回滚：
    - `initialize` 被 `_disableInitializers()` 锁住
