@@ -2,48 +2,46 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/TransparentProxy.sol";
 import "../src/TransparentProxyDemoLogic.sol";
 import "../src/TransparentProxyDemoLogicV2.sol";
+import {
+    ITransparentUpgradeableProxy,
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 /**
  * @title TransparentProxyTest
- * @notice 最小透明代理测试集。
+ * @notice OpenZeppelin 透明代理生产级最小测试集。
  * @dev
  * 测试重点不是“业务逻辑多复杂”，而是把透明代理最核心的行为钉牢：
  * - 初始化是否正确写入代理存储
  * - 普通用户是否会被正确转发到实现合约
- * - 管理员是否会被拦下，不能误走业务函数
+ * - ProxyAdmin 是否是代理管理员，owner 是否可以管理 ProxyAdmin
  * - 升级后逻辑是否切换成功，且旧状态仍然保留
  */
 contract TransparentProxyTest is Test {
-    bytes32 internal constant IMPLEMENTATION_SLOT =
-        0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-    bytes32 internal constant ADMIN_SLOT =
-        0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+    bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+    bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
-    address internal proxyAdmin;
     address internal owner;
     address internal otherUser;
 
     TransparentProxyDemoLogic internal logicV1;
-    TransparentProxy internal proxy;
+    TransparentUpgradeableProxy internal proxy;
+    ProxyAdmin internal proxyAdmin;
     TransparentProxyDemoLogic internal app;
 
     function setUp() public {
-        proxyAdmin = address(0xA11CE);
         owner = address(0xB0B);
         otherUser = address(0xC0C);
 
         logicV1 = new TransparentProxyDemoLogic();
 
-        bytes memory initData = abi.encodeWithSelector(
-            TransparentProxyDemoLogic.initialize.selector,
-            owner,
-            uint256(7)
-        );
+        bytes memory initData = abi.encodeWithSelector(TransparentProxyDemoLogic.initialize.selector, owner, uint256(7));
 
-        proxy = new TransparentProxy(address(logicV1), proxyAdmin, initData);
+        proxy = new TransparentUpgradeableProxy(address(logicV1), owner, initData);
+        proxyAdmin = ProxyAdmin(address(uint160(uint256(vm.load(address(proxy), ADMIN_SLOT)))));
         app = TransparentProxyDemoLogic(address(proxy));
     }
 
@@ -52,13 +50,12 @@ contract TransparentProxyTest is Test {
      * @dev 这里直接读 EIP-1967 槽位，最直观，也能避免跟实现合约函数名冲突。
      */
     function test_ProxyStoresImplementationAndAdmin() public {
-        address storedImplementation = address(
-            uint160(uint256(vm.load(address(proxy), IMPLEMENTATION_SLOT)))
-        );
+        address storedImplementation = address(uint160(uint256(vm.load(address(proxy), IMPLEMENTATION_SLOT))));
         address storedAdmin = address(uint160(uint256(vm.load(address(proxy), ADMIN_SLOT))));
 
         assertEq(storedImplementation, address(logicV1));
-        assertEq(storedAdmin, proxyAdmin);
+        assertEq(storedAdmin, address(proxyAdmin));
+        assertEq(proxyAdmin.owner(), owner);
     }
 
     /**
@@ -74,15 +71,25 @@ contract TransparentProxyTest is Test {
      * @notice 实现合约自身不能被独立初始化。
      */
     function test_DirectImplementationInitializeReverts() public {
-        vm.expectRevert(TransparentProxyDemoLogic.AlreadyInitialized.selector);
+        vm.expectRevert(abi.encodeWithSignature("InvalidInitialization()"));
         logicV1.initialize(owner, 99);
+    }
+
+    /**
+     * @notice 新版本实现合约自身也不能被独立初始化。
+     */
+    function test_DirectV2ImplementationInitializeReverts() public {
+        TransparentProxyDemoLogicV2 logicV2 = new TransparentProxyDemoLogicV2();
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidInitialization()"));
+        logicV2.initialize(owner, 99);
     }
 
     /**
      * @notice 代理地址只能初始化一次。
      */
     function test_ProxyCannotInitializeTwice() public {
-        vm.expectRevert(TransparentProxyDemoLogic.AlreadyInitialized.selector);
+        vm.expectRevert(abi.encodeWithSignature("InvalidInitialization()"));
         app.initialize(owner, 99);
     }
 
@@ -97,12 +104,12 @@ contract TransparentProxyTest is Test {
     }
 
     /**
-     * @notice 管理员不允许直接走普通业务函数。
+     * @notice 透明代理的真实 admin 是 ProxyAdmin 合约，它不能直接走普通业务函数。
      * @dev 这是透明代理最重要的行为之一。
      */
     function test_AdminCannotFallbackToImplementation() public {
-        vm.prank(proxyAdmin);
-        vm.expectRevert(TransparentProxy.AdminCannotFallback.selector);
+        vm.prank(address(proxyAdmin));
+        vm.expectRevert(TransparentUpgradeableProxy.ProxyDeniedAdminAccess.selector);
         app.setValue(99);
     }
 
@@ -111,7 +118,7 @@ contract TransparentProxyTest is Test {
      */
     function test_ImplementationAccessControlStillWorks() public {
         vm.prank(otherUser);
-        vm.expectRevert(TransparentProxyDemoLogic.NotOwner.selector);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", otherUser));
         app.add(5);
     }
 
@@ -124,28 +131,35 @@ contract TransparentProxyTest is Test {
 
         TransparentProxyDemoLogicV2 logicV2 = new TransparentProxyDemoLogicV2();
 
-        vm.prank(proxyAdmin);
-        proxy.upgradeTo(address(logicV2));
+        vm.prank(owner);
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(logicV2), "");
 
         TransparentProxyDemoLogicV2 upgradedApp = TransparentProxyDemoLogicV2(address(proxy));
         assertEq(upgradedApp.value(), 21);
         assertEq(upgradedApp.version(), 2);
+        assertEq(upgradedApp.owner(), owner);
     }
 
     /**
-     * @notice 管理员可以变更为新的地址。
+     * @notice 非 ProxyAdmin owner 不能升级代理。
      */
-    function test_ChangeAdmin() public {
-        address newAdmin = address(0xD00D);
+    function test_RevertIfNonProxyAdminOwnerUpgrades() public {
+        TransparentProxyDemoLogicV2 logicV2 = new TransparentProxyDemoLogicV2();
 
-        vm.prank(proxyAdmin);
-        proxy.changeAdmin(newAdmin);
+        vm.prank(otherUser);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", otherUser));
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(logicV2), "");
+    }
 
-        address storedAdmin = address(uint160(uint256(vm.load(address(proxy), ADMIN_SLOT))));
-        assertEq(storedAdmin, newAdmin);
+    /**
+     * @notice 透明代理的管理权通过 ProxyAdmin owner 转移。
+     */
+    function test_ProxyAdminOwnershipCanTransfer() public {
+        address newOwner = address(0xD00D);
 
-        vm.prank(proxyAdmin);
-        vm.expectRevert(TransparentProxy.NotAdmin.selector);
-        proxy.changeAdmin(address(0xEEEE));
+        vm.prank(owner);
+        proxyAdmin.transferOwnership(newOwner);
+
+        assertEq(proxyAdmin.owner(), newOwner);
     }
 }

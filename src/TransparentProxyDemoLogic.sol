@@ -1,66 +1,42 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 /**
  * @title TransparentProxyDemoLogic
- * @notice 配合透明代理使用的极简演示逻辑合约。
+ * @notice 配合 OpenZeppelin 透明代理使用的生产级最小逻辑合约（V1）。
  * @dev
- * 这个合约故意写得非常小，只保留几个最容易验证代理行为的点：
- * - initialize：初始化 owner 和初始值
- * - setValue：只有 owner 可以改值
+ * 这个合约只保留生产代理合约必须示范的几件事：
+ * - 使用 Initializable/OwnableUpgradeable，避免构造函数初始化业务状态
+ * - constructor 里禁用实现合约自身初始化
+ * - initialize 只能通过代理成功执行一次
  * - add：在原值基础上叠加
- * - transferOwnership：演示代理升级前后的状态仍然保留
  *
  * 由于它是“实现合约”，真正的状态会存进代理地址对应的存储里，
  * 而不是存进这个逻辑合约自身。
  */
-contract TransparentProxyDemoLogic {
-    /// @notice 当前业务 owner。
-    address public owner;
-
+contract TransparentProxyDemoLogic is OwnableUpgradeable {
     /// @notice 一个简单数值，用来验证 delegatecall 后状态写到了代理上。
     uint256 public value;
 
-    /// @dev 防止重复初始化。
-    bool private initialized;
-
-    /// @notice 当调用者不是 owner 时抛出。
-    error NotOwner();
-
-    /// @notice 当初始化被重复调用时抛出。
-    error AlreadyInitialized();
-
-    /// @notice 当地址参数为空时抛出。
-    error ZeroAddress();
-
     /**
      * @notice 锁定实现合约自身的初始化状态。
-     * @dev 构造函数只修改实现合约的存储，不影响代理的独立存储。
-     *      代理部署时仍会通过 delegatecall 在代理上下文中执行 initialize。
+     * @dev 代理拥有独立存储，因此仍可通过代理执行 initialize。
      */
     constructor() {
-        initialized = true;
+        _disableInitializers();
     }
 
     /**
      * @notice 通过代理初始化业务状态。
-     * @param owner_ 业务 owner。
+     * @param initialOwner 初始 owner。
      * @param initialValue 初始数值。
-     * @dev 只能在代理存储中成功初始化一次；实现合约自身已在构造时锁定。
+     * @dev 只能在代理存储中成功初始化一次；实现合约自身已在构造时禁用初始化。
      */
-    function initialize(address owner_, uint256 initialValue) external {
-        if (initialized) revert AlreadyInitialized();
-        if (owner_ == address(0)) revert ZeroAddress();
-
-        initialized = true;
-        owner = owner_;
+    function initialize(address initialOwner, uint256 initialValue) public initializer {
+        __Ownable_init(initialOwner);
         value = initialValue;
-    }
-
-    /// @dev 只有 owner 才能执行。
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
-        _;
     }
 
     /**
@@ -77,14 +53,5 @@ contract TransparentProxyDemoLogic {
      */
     function add(uint256 delta) external onlyOwner {
         value += delta;
-    }
-
-    /**
-     * @notice 转移业务 owner。
-     * @param newOwner 新 owner 地址。
-     */
-    function transferOwnership(address newOwner) external onlyOwner {
-        if (newOwner == address(0)) revert ZeroAddress();
-        owner = newOwner;
     }
 }

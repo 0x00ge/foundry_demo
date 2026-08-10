@@ -3,8 +3,8 @@
 这份文档把当前仓库里的三套代理写清楚：
 
 1. `MyTokenContract` 使用透明代理
-2. `TransparentProxy` 是你自己写的最小透明代理示例
-3. `UUPSDemoLogic` 是最小 UUPS 示例
+2. `TransparentProxyDemoLogic` 是 OpenZeppelin 透明代理的生产级最小示例
+3. `UUPSDemoLogic` 是 OpenZeppelin UUPS 的生产级最小示例
 
 ## 1. MyTokenContract
 
@@ -59,11 +59,10 @@
 
 ## 2. 透明代理示例
 
-这是一个最小透明代理实现，用来理解机制本身。
+这是一个基于 OpenZeppelin `TransparentUpgradeableProxy + ProxyAdmin` 的生产级最小示例。
 
 对应文件：
 
-- [src/TransparentProxy.sol](./src/TransparentProxy.sol)
 - [src/TransparentProxyDemoLogic.sol](./src/TransparentProxyDemoLogic.sol)
 - [src/TransparentProxyDemoLogicV2.sol](./src/TransparentProxyDemoLogicV2.sol)
 - [script/DeployTransparentProxy.s.sol](./script/DeployTransparentProxy.s.sol)
@@ -73,47 +72,50 @@
 ### 运行方式
 
 - 部署 `TransparentProxyDemoLogic`
-- 用 `TransparentProxy` 包一层
+- 用 `TransparentUpgradeableProxy` 包一层
 - 构造时把 `initialize` 的 calldata 一起传进去
+- 代理构造时自动创建 `ProxyAdmin`
 - 通过代理调用业务函数
 
 ### 透明代理规则
 
 - 普通用户的业务调用会被 `fallback` 转发到实现合约
-- 管理员不能走普通业务调用路径
-- 管理员只能做升级和改管理员
+- 代理的真实 admin 是 `ProxyAdmin` 合约
+- `ProxyAdmin` 不能走普通业务调用路径
+- `ProxyAdmin` 的 owner 通过 `ProxyAdmin.upgradeAndCall` 升级代理
 
 ### 关键点
 
-- 代理自己存 `implementation` 和 `admin`
-- `fallback` 里用 `delegatecall`
-- 升级只改实现地址，不改代理地址
+- 实现合约继承 `OwnableUpgradeable`
+- 实现合约构造函数调用 `_disableInitializers()`，防止实现地址被独立初始化
+- 初始化只能通过代理构造函数里的 delegatecall 完成
+- 升级只改实现地址，不改代理地址和业务状态
 
 ### 详细调用过程
 
 1. 部署 `TransparentProxyDemoLogic` 作为 V1 逻辑合约。
-2. 部署 `TransparentProxy`，传入：
+2. 部署 `TransparentUpgradeableProxy`，传入：
    - V1 地址
-   - 代理管理员地址
+   - `ProxyAdmin` owner 地址
    - `initialize(owner, initialValue)` 的编码数据
-3. 代理构造时先写入 `implementation` 和 `admin`。
-4. 代理再对 V1 执行一次 `delegatecall` 初始化。
+3. 代理构造时部署并记录 `ProxyAdmin`。
+4. 代理再对 V1 执行一次 `delegatecall` 初始化，把 owner 和 value 写入代理存储。
 5. 普通用户调用 `setValue`、`add`、`transferOwnership` 等函数时：
    - 代理命中 `fallback`
-   - 校验调用者不是管理员
+   - 校验调用者不是 `ProxyAdmin`
    - 把调用原样转发给实现合约
    - 状态写回代理存储
-6. 代理管理员调用业务函数时会被直接拒绝，不能误走实现合约逻辑。
-7. 升级时管理员调用 `upgradeTo(newImplementation)`：
-   - 校验调用者就是管理员
-   - 校验新实现地址是合约
+6. `ProxyAdmin` 调用业务函数时会被直接拒绝，不能误走实现合约逻辑。
+7. 升级时 `ProxyAdmin` owner 调用 `ProxyAdmin.upgradeAndCall(proxy, newImplementation, data)`：
+   - `ProxyAdmin` 校验调用者是 owner
+   - 代理校验调用者是自己的 admin
    - 更新 EIP-1967 implementation 槽
 8. 升级后代理地址不变，后续所有普通调用都会进入新实现合约。
-9. 如果需要改管理员，管理员调用 `changeAdmin(newAdmin)` 即可。
+9. 如果需要转移升级权限，当前 `ProxyAdmin` owner 调用 `transferOwnership(newOwner)`。
 
 ## 3. UUPS 示例
 
-UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `ProxyAdmin`。
+UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `ProxyAdmin`。当前示例使用 OpenZeppelin `ERC1967Proxy + UUPSUpgradeable + OwnableUpgradeable`。
 
 对应文件：
 
@@ -140,7 +142,8 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 
 - 代理只负责转发
 - 升级入口在实现合约里
-- 一般会和 `OwnableUpgradeable` 或自定义权限控制一起用
+- 实现合约构造函数调用 `_disableInitializers()`，防止实现地址被独立初始化
+- `_authorizeUpgrade` 用 `onlyOwner` 限定升级权限
 
 ### 详细调用过程
 
@@ -159,15 +162,17 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 6. 若新实现合约通过 `proxiableUUID()` 校验，代理切换到新实现地址。
 7. 如果传了升级后的初始化数据，代理会继续执行迁移调用。
 8. 升级完成后，代理地址不变，旧状态保留，新逻辑生效。
-9. 直接对实现合约地址调用 `upgradeToAndCall` 会回滚，因为 UUPS 要求必须通过代理上下文调用。
+9. 直接对实现合约地址调用 `initialize` 或 `upgradeToAndCall` 会回滚：
+   - `initialize` 被 `_disableInitializers()` 锁住
+   - `upgradeToAndCall` 要求必须通过代理上下文调用
 
 ## 4. 这三者的区别
 
-- 透明代理：升级逻辑在代理/管理员侧
-- UUPS：升级逻辑在实现合约侧
+- 透明代理：升级入口在 `ProxyAdmin` 侧
+- UUPS：升级入口在实现合约侧
 - `MyTokenContract`：你当前项目里实际用的是透明代理
 
 ## 5. 当前建议
 
-如果你只是想把 `MyTokenContract` 继续维护下去，就按透明代理写法理解和部署。
+如果你只是想把 `MyTokenContract` 继续维护下去，就按 OpenZeppelin 透明代理写法理解和部署。
 如果你想做一套更轻的升级结构，再看 UUPS 示例就行。

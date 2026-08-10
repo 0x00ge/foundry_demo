@@ -16,12 +16,9 @@ import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
  * 3. owner 能否通过 UUPS 方式升级到 V2，且旧状态是否保留
  */
 contract UUPSDemoTest is Test {
-    bytes32 internal constant IMPLEMENTATION_SLOT =
-        0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-    bytes4 internal constant UUPS_UNAUTHORIZED_CALL_CONTEXT =
-        bytes4(keccak256("UUPSUnauthorizedCallContext()"));
-    bytes4 internal constant INVALID_INITIALIZATION =
-        bytes4(keccak256("InvalidInitialization()"));
+    bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+    bytes4 internal constant UUPS_UNAUTHORIZED_CALL_CONTEXT = bytes4(keccak256("UUPSUnauthorizedCallContext()"));
+    bytes4 internal constant INVALID_INITIALIZATION = bytes4(keccak256("InvalidInitialization()"));
 
     address internal owner;
     address internal otherUser;
@@ -36,11 +33,7 @@ contract UUPSDemoTest is Test {
 
         logicV1 = new UUPSDemoLogic();
 
-        bytes memory initData = abi.encodeWithSelector(
-            UUPSDemoLogic.initialize.selector,
-            owner,
-            uint256(11)
-        );
+        bytes memory initData = abi.encodeWithSelector(UUPSDemoLogic.initialize.selector, owner, uint256(11));
 
         proxy = new ERC1967Proxy(address(logicV1), initData);
         app = UUPSDemoLogic(address(proxy));
@@ -50,9 +43,7 @@ contract UUPSDemoTest is Test {
      * @notice 检查代理初始化后的实现地址是否正确。
      */
     function test_ProxyStoresImplementation() public {
-        address storedImplementation = address(
-            uint160(uint256(vm.load(address(proxy), IMPLEMENTATION_SLOT)))
-        );
+        address storedImplementation = address(uint160(uint256(vm.load(address(proxy), IMPLEMENTATION_SLOT))));
 
         assertEq(storedImplementation, address(logicV1));
     }
@@ -71,6 +62,16 @@ contract UUPSDemoTest is Test {
     function test_DirectImplementationInitializeReverts() public {
         vm.expectRevert(INVALID_INITIALIZATION);
         logicV1.initialize(owner, 99);
+    }
+
+    /**
+     * @notice 新版本实现合约自身也不能被独立初始化。
+     */
+    function test_DirectV2ImplementationInitializeReverts() public {
+        UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
+
+        vm.expectRevert(INVALID_INITIALIZATION);
+        logicV2.initialize(owner, 99);
     }
 
     /**
@@ -116,6 +117,17 @@ contract UUPSDemoTest is Test {
         assertEq(upgradedApp.value(), 21);
         assertEq(upgradedApp.version(), 2);
         assertEq(upgradedApp.owner(), owner);
+    }
+
+    /**
+     * @notice 非 owner 不能通过代理执行 UUPS 升级。
+     */
+    function test_RevertIfNonOwnerUpgrades() public {
+        UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
+
+        vm.prank(otherUser);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", otherUser));
+        app.upgradeToAndCall(address(logicV2), "");
     }
 
     /**
