@@ -17,7 +17,9 @@ contract TransparentProxyDemoLogicV2 is Initializable, OwnableUpgradeable {
      */
     string public version;
 
-    /// @notice 一个简单数值，用于验证升级前后的代理状态保持不变。
+    /**
+     * @notice 一个简单数值，用于验证升级前后的代理状态保持不变。
+     */
     uint256 public value;
 
     /**

@@ -18,10 +18,14 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
  * 而不是存进这个逻辑合约自身。
  */
 contract TransparentProxyDemoLogicV1 is Initializable, OwnableUpgradeable {
-    /// @notice 当前业务实现版本，实际状态保存在代理地址。
+    /**
+     * @notice 当前业务实现版本，实际状态保存在代理地址。
+     */
     string public version;
 
-    /// @notice 一个简单数值，用于验证升级前后的代理状态保持不变。
+    /**
+     * @notice 一个简单数值，用于验证升级前后的代理状态保持不变。
+     */
     uint256 public value;
 
     /**
