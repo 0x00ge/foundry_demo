@@ -83,9 +83,6 @@ contract UUPSDemoTest is Test {
 
         vm.expectRevert(INVALID_INITIALIZATION);
         logicV2.initialize(owner);
-
-        vm.expectRevert(INVALID_INITIALIZATION);
-        logicV2.initializeV2();
     }
 
     /**
@@ -112,7 +109,7 @@ contract UUPSDemoTest is Test {
     function test_RevertIfNotOwner() public {
         vm.prank(otherUser);
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", otherUser));
-        app.add(5);
+        app.add1();
     }
 
     /**
@@ -125,13 +122,27 @@ contract UUPSDemoTest is Test {
         UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
 
         vm.prank(owner);
-        bytes memory migrationData = abi.encodeWithSelector(UUPSDemoLogicV2.initializeV2.selector);
-        app.upgradeToAndCall(address(logicV2), migrationData);
+        app.upgradeToAndCall(address(logicV2), "");
 
         UUPSDemoLogicV2 upgradedApp = UUPSDemoLogicV2(address(proxy));
         assertEq(upgradedApp.value(), 21);
-        assertEq(upgradedApp.version(), "UUPSDemoLogicV2");
+        // 没有执行额外迁移函数，因此代理中已有的 V1 version 状态保持不变。
+        assertEq(upgradedApp.version(), "UUPSDemoLogicV1");
         assertEq(upgradedApp.owner(), owner);
+    }
+
+    /**
+     * @notice 升级必须同时切换 EIP-1967 implementation 槽位。
+     * @dev 只验证代理返回新逻辑还不够，直接检查槽位可以确认代理确实完成了实现切换。
+     */
+    function test_UpgradeChangesImplementationSlot() public {
+        UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
+
+        vm.prank(owner);
+        app.upgradeToAndCall(address(logicV2), "");
+
+        address storedImplementation = address(uint160(uint256(vm.load(address(proxy), IMPLEMENTATION_SLOT))));
+        assertEq(storedImplementation, address(logicV2));
     }
 
     /**
@@ -155,6 +166,39 @@ contract UUPSDemoTest is Test {
         vm.prank(owner);
         vm.expectRevert(UUPS_UNAUTHORIZED_CALL_CONTEXT);
         logicV1.upgradeToAndCall(address(logicV2), "");
+    }
+
+    /**
+     * @notice 升级后 V2 的新增业务函数仍然受 owner 权限保护。
+     */
+    function test_V2BusinessFunctionsRequireOwner() public {
+        UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
+
+        vm.prank(owner);
+        app.upgradeToAndCall(address(logicV2), "");
+
+        UUPSDemoLogicV2 upgradedApp = UUPSDemoLogicV2(address(proxy));
+        vm.prank(otherUser);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", otherUser));
+        upgradedApp.add1();
+
+        vm.prank(owner);
+        upgradedApp.add1();
+        upgradedApp.add2();
+        assertEq(upgradedApp.value(), 3);
+    }
+
+    /**
+     * @notice 不带迁移 calldata 的升级不会重置代理中已有的版本状态。
+     */
+    function test_UpgradeWithoutMigrationPreservesStoredVersion() public {
+        UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
+
+        vm.prank(owner);
+        app.upgradeToAndCall(address(logicV2), "");
+
+        UUPSDemoLogicV2 upgradedApp = UUPSDemoLogicV2(address(proxy));
+        assertEq(upgradedApp.version(), "UUPSDemoLogicV1");
     }
 
     /**
