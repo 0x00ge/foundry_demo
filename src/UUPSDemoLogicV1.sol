@@ -56,7 +56,7 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
      * @notice 设置数值。
      * @dev 只有 owner 可以改，方便测试访问控制。
      */
-    function setValue(uint256 newValue) external view {
+    function setValue(uint256 newValue) external {
         value = newValue;
     }
 
