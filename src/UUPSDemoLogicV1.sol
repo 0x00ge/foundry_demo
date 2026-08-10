@@ -19,7 +19,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  * - version/value 是业务状态，也写入代理存储。
  * - 新版本只能在末尾追加状态，不能调整已有变量或继承顺序。
  */
-contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
+contract UUPSDemoLogicV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /// @notice 当前业务实现版本，实际状态保存在代理地址。
     string public version;
 
@@ -50,15 +50,6 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
      */
     function initialize(address initialOwner) public initializer {
         __Ownable_init(initialOwner);
-        _setVersion();
-    }
-
-    /**
-     * @notice 设置当前实现版本。
-     * @dev 使用 virtual 让 V2 在 reinitializer(2) 中复用这段逻辑。
-     *      该函数只修改代理存储中的 version，不修改 implementation 槽位。
-     */
-    function _setVersion() internal virtual {
         version = "UUPSDemoLogicV1";
     }
 
@@ -71,14 +62,6 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     /**
-     * @notice 在当前业务数值上增加增量。
-     * @dev 这是普通业务函数，用来验证升级前后代理状态和权限仍然有效。
-     */
-    function add(uint256 delta) external onlyOwner {
-        value += delta;
-    }
-
-    /**
      * @notice UUPS 升级授权钩子。
      * @dev
      * UUPSUpgradeable 会在执行升级前调用本函数。
@@ -88,5 +71,13 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
     function _authorizeUpgrade(address newImplementation) internal view override onlyOwner {
         // 参数由 UUPSUpgradeable 用于后续兼容性检查，这里只负责权限判断。
         newImplementation;
+    }
+
+    /**
+     * @notice 在当前业务数值上增加增量。
+     * @dev 这是普通业务函数，用来验证升级前后代理状态和权限仍然有效。
+     */
+    function add1() external onlyOwner {
+        value += 1;
     }
 }
