@@ -19,7 +19,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  */
 contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
 
-    uint256 public version;
+    string public version;
 
     uint256 public value;
 
@@ -42,7 +42,7 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
      */
     function initialize(address initialOwner) public initializer {
         __Ownable_init(initialOwner);
-        version = 1;
+        version = "UUPSDemoLogicV1";
     }
 
     /**
