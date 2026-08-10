@@ -49,8 +49,8 @@ contract TransparentProxy {
 
     /**
      * @notice 构造代理并立即初始化实现合约。
-     * @param implementation_ 初始实现合约地址。
-     * @param admin_ 代理管理员地址。
+     * @param _implementation 初始实现合约地址。
+     * @param _admin 代理管理员地址。
      * @param data 初始化 calldata，通常是 initialize(...) 的编码结果。
      * @dev
      * 构造时会先写入 admin 和 implementation，再把 data 透传给实现合约做一次 delegatecall。

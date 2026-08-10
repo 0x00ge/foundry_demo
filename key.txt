@@ -1,0 +1,46 @@
+dab672c164c371e30650db8a53e4b6d0c4a63edfc1d1f7e839c174e4f2fc7943
+
+OWNER_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
+PROXY_ADMIN_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
+forge script script/DeployTransparentProxy.s.sol:DeployTransparentProxy \
+  --rpc-url https://bsc-testnet-dataseed.bnbchain.org \
+  --chain-id 97 \
+  --private-key "$PRIVATE_KEY" \
+  --broadcast
+
+OWNER_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
+PROXY_ADMIN_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
+forge script script/DeployTransparentProxy.s.sol:DeployTransparentProxy \
+  --rpc-url https://bsc-testnet-dataseed.bnbchain.org \
+  --chain-id 97 \
+  --private-key 0xdab672c164c371e30650db8a53e4b6d0c4a63edfc1d1f7e839c174e4f2fc7943 \
+  --broadcast
+
+
+  Q7RRJ6VZ43JIB8J97JU2U9SYBS8N29EGQY
+
+forge verify-contract \
+0x2A952BEadF2A69244926bC16FB5770fA13C717b0 \
+src/TransparentProxyDemoLogic.sol:TransparentProxyDemoLogic \
+--chain 97 \
+--verifier etherscan \
+--etherscan-api-key Q7RRJ6VZ43JIB8J97JU2U9SYBS8N29EGQY
+
+  forge verify-contract \
+  0x2A952BEadF2A69244926bC16FB5770fA13C717b0 \
+  src/TransparentProxyDemoLogic.sol:TransparentProxyDemoLogic \
+  --chain 97 \
+  --compiler-version 0.8.35 \
+  --verifier etherscan \
+  --etherscan-api-key Q7RRJ6VZ43JIB8J97JU2U9SYBS8N29EGQY \
+  --watch
+
+  forge verify-contract \
+  0x6Dd5A744b45A9Ca009858B22912Ec02335e07ea7 \
+  src/TransparentProxy.sol:TransparentProxy \
+  --chain 97 \
+  --compiler-version 0.8.35 \
+  --verifier etherscan \
+  --etherscan-api-key Q7RRJ6VZ43JIB8J97JU2U9SYBS8N29EGQY \
+  --constructor-args 0x0000000000000000000000002a952beadf2a69244926bc16fb5770fa13c717b0000000000000000000000000dc03164a68335a61d0792aa1f6418e62528b8cbe00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044cd6dc687000000000000000000000000dc03164a68335a61d0792aa1f6418e62528b8cbe000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000 \
+  --watch
