@@ -15,7 +15,7 @@ import {UUPSDemoLogicV1} from "./UUPSDemoLogicV1.sol";
  */
 contract UUPSDemoLogicV2 is UUPSDemoLogicV1 {
 
-    function _setVersion() internal virtual {
+    function _setVersion() internal override {
         version = "UUPSDemoLogicV2";
     }
 }

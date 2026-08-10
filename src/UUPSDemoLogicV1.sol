@@ -42,7 +42,7 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
      */
     function initialize(address initialOwner) public initializer {
         __Ownable_init(initialOwner);
-        version = "UUPSDemoLogicV1";
+        _setVersion();
     }
 
     /**
@@ -50,6 +50,7 @@ contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
      * @dev 内部钩子函数，用于在升级到新实现合约时更新版本号。
      */
     function _setVersion() internal virtual {
+        version = "UUPSDemoLogicV1";
     }
 
     /**
