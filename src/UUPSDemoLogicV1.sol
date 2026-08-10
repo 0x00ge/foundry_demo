@@ -5,7 +5,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
- * @title UUPSDemoLogic
+ * @title UUPSDemoLogicV1
  * @notice 一个最小可用的 UUPS 实现合约（V1）。
  * @dev
  * UUPS 的特点是：
@@ -17,7 +17,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  * - owner：业务管理员
  * - value：一个简单数值，方便验证代理存储是否正确
  */
-contract UUPSDemoLogic is OwnableUpgradeable, UUPSUpgradeable {
+contract UUPSDemoLogicV1 is OwnableUpgradeable, UUPSUpgradeable {
     /// @notice 一个简单数值，用来验证代理存储是否正确。
     uint256 public value;
 

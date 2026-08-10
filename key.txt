@@ -1,7 +1,7 @@
 dab672c164c371e30650db8a53e4b6d0c4a63edfc1d1f7e839c174e4f2fc7943
 
 OWNER_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
-PROXY_ADMIN_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
+PROXY_ADMIN_OWNER_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
 forge script script/DeployTransparentProxy.s.sol:DeployTransparentProxy \
   --rpc-url https://bsc-testnet-dataseed.bnbchain.org \
   --chain-id 97 \
@@ -9,7 +9,7 @@ forge script script/DeployTransparentProxy.s.sol:DeployTransparentProxy \
   --broadcast
 
 OWNER_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
-PROXY_ADMIN_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
+PROXY_ADMIN_OWNER_ADDR=0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
 forge script script/DeployTransparentProxy.s.sol:DeployTransparentProxy \
   --rpc-url https://bsc-testnet-dataseed.bnbchain.org \
   --chain-id 97 \
@@ -21,14 +21,14 @@ forge script script/DeployTransparentProxy.s.sol:DeployTransparentProxy \
 
 forge verify-contract \
 0x2A952BEadF2A69244926bC16FB5770fA13C717b0 \
-src/TransparentProxyDemoLogic.sol:TransparentProxyDemoLogic \
+src/TransparentProxyDemoLogicV1.sol:TransparentProxyDemoLogicV1 \
 --chain 97 \
 --verifier etherscan \
 --etherscan-api-key Q7RRJ6VZ43JIB8J97JU2U9SYBS8N29EGQY
 
   forge verify-contract \
   0x2A952BEadF2A69244926bC16FB5770fA13C717b0 \
-  src/TransparentProxyDemoLogic.sol:TransparentProxyDemoLogic \
+  src/TransparentProxyDemoLogicV1.sol:TransparentProxyDemoLogicV1 \
   --chain 97 \
   --compiler-version 0.8.35 \
   --verifier etherscan \

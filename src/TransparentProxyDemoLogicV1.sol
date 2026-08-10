@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
- * @title TransparentProxyDemoLogic
+ * @title TransparentProxyDemoLogicV1
  * @notice 配合 OpenZeppelin 透明代理使用的生产级最小逻辑合约（V1）。
  * @dev
  * 这个合约只保留生产代理合约必须示范的几件事：
@@ -16,7 +16,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
  * 由于它是“实现合约”，真正的状态会存进代理地址对应的存储里，
  * 而不是存进这个逻辑合约自身。
  */
-contract TransparentProxyDemoLogic is OwnableUpgradeable {
+contract TransparentProxyDemoLogicV1 is OwnableUpgradeable {
     /// @notice 一个简单数值，用来验证 delegatecall 后状态写到了代理上。
     uint256 public value;
 

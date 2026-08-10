@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/TransparentProxyDemoLogic.sol";
+import "../src/TransparentProxyDemoLogicV1.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
@@ -32,10 +32,10 @@ contract DeployTransparentProxy is Script {
 
         vm.startBroadcast();
 
-        TransparentProxyDemoLogic logic = new TransparentProxyDemoLogic();
+        TransparentProxyDemoLogicV1 logic = new TransparentProxyDemoLogicV1();
 
         bytes memory initData =
-            abi.encodeWithSelector(TransparentProxyDemoLogic.initialize.selector, owner, initialValue);
+            abi.encodeWithSelector(TransparentProxyDemoLogicV1.initialize.selector, owner, initialValue);
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(logic), proxyAdminOwner, initData);
         ProxyAdmin proxyAdmin = ProxyAdmin(address(uint160(uint256(vm.load(address(proxy), ERC1967_ADMIN_SLOT)))));

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/TransparentProxyDemoLogic.sol";
+import "../src/TransparentProxyDemoLogicV1.sol";
 import "../src/TransparentProxyDemoLogicV2.sol";
 import {
     ITransparentUpgradeableProxy,
@@ -27,22 +27,23 @@ contract TransparentProxyTest is Test {
     address internal owner;
     address internal otherUser;
 
-    TransparentProxyDemoLogic internal logicV1;
+    TransparentProxyDemoLogicV1 internal logicV1;
     TransparentUpgradeableProxy internal proxy;
     ProxyAdmin internal proxyAdmin;
-    TransparentProxyDemoLogic internal app;
+    TransparentProxyDemoLogicV1 internal app;
 
     function setUp() public {
         owner = address(0xB0B);
         otherUser = address(0xC0C);
 
-        logicV1 = new TransparentProxyDemoLogic();
+        logicV1 = new TransparentProxyDemoLogicV1();
 
-        bytes memory initData = abi.encodeWithSelector(TransparentProxyDemoLogic.initialize.selector, owner, uint256(7));
+        bytes memory initData =
+            abi.encodeWithSelector(TransparentProxyDemoLogicV1.initialize.selector, owner, uint256(7));
 
         proxy = new TransparentUpgradeableProxy(address(logicV1), owner, initData);
         proxyAdmin = ProxyAdmin(address(uint160(uint256(vm.load(address(proxy), ADMIN_SLOT)))));
-        app = TransparentProxyDemoLogic(address(proxy));
+        app = TransparentProxyDemoLogicV1(address(proxy));
     }
 
     /**

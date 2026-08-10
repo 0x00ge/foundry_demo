@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {UUPSDemoLogic} from "./UUPSDemoLogic.sol";
+import {UUPSDemoLogicV1} from "./UUPSDemoLogicV1.sol";
 
 /**
  * @title UUPSDemoLogicV2
@@ -13,7 +13,7 @@ import {UUPSDemoLogic} from "./UUPSDemoLogic.sol";
  * - 业务状态不丢
  * - 新逻辑已经生效
  */
-contract UUPSDemoLogicV2 is UUPSDemoLogic {
+contract UUPSDemoLogicV2 is UUPSDemoLogicV1 {
     /**
      * @notice 返回当前实现版本号。
      * @dev 这是最轻量的升级验证方式。

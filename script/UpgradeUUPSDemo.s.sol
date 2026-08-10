@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/UUPSDemoLogic.sol";
+import "../src/UUPSDemoLogicV1.sol";
 import "../src/UUPSDemoLogicV2.sol";
 
 /**
@@ -25,7 +25,7 @@ contract UpgradeUUPSDemo is Script {
         vm.startBroadcast(privateKey);
 
         UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
-        UUPSDemoLogic proxy = UUPSDemoLogic(payable(proxyAddress));
+        UUPSDemoLogicV1 proxy = UUPSDemoLogicV1(payable(proxyAddress));
         proxy.upgradeToAndCall(address(logicV2), "");
 
         vm.stopBroadcast();

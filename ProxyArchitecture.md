@@ -2,23 +2,23 @@
 
 这份文档把当前仓库里的三套代理写清楚：
 
-1. `MyTokenContract` 使用透明代理
-2. `TransparentProxyDemoLogic` 是 OpenZeppelin 透明代理的生产级最小示例
-3. `UUPSDemoLogic` 是 OpenZeppelin UUPS 的生产级最小示例
+1. `MyTokenContractV1` 使用透明代理
+2. `TransparentProxyDemoLogicV1/V2` 是 OpenZeppelin 透明代理的生产级最小示例
+3. `UUPSDemoLogicV1/V2` 是 OpenZeppelin UUPS 的生产级最小示例
 
-## 1. MyTokenContract
+## 1. MyTokenContractV1
 
-当前 `MyTokenContract` 不是 UUPS，而是透明代理体系。
+当前 `MyTokenContractV1` 不是 UUPS，而是透明代理体系。
 
 对应文件：
 
-- [src/MyTokenContract.sol](./src/MyTokenContract.sol)
+- [src/MyTokenContractV1.sol](./src/MyTokenContractV1.sol)
 - [script/DeployMyToken.s.sol](./script/DeployMyToken.s.sol)
 - [test/MyTokenContractTest.t.sol](./test/MyTokenContractTest.t.sol)
 
 ### 运行方式
 
-- 部署逻辑合约 `MyTokenContract`
+- 部署逻辑合约 `MyTokenContractV1`
 - 部署 `TransparentUpgradeableProxy`
 - 使用 `ProxyAdmin` 管理升级
 - 通过代理地址调用 `initialize(owner, admin)`
@@ -37,7 +37,7 @@
 
 ### 详细调用过程
 
-1. 部署 `MyTokenContract` 逻辑合约。
+1. 部署 `MyTokenContractV1` 逻辑合约。
 2. 部署 `TransparentUpgradeableProxy`，并指定：
    - 逻辑合约地址
    - `ProxyAdmin` 的 owner
@@ -63,7 +63,7 @@
 
 对应文件：
 
-- [src/TransparentProxyDemoLogic.sol](./src/TransparentProxyDemoLogic.sol)
+- [src/TransparentProxyDemoLogicV1.sol](./src/TransparentProxyDemoLogicV1.sol)
 - [src/TransparentProxyDemoLogicV2.sol](./src/TransparentProxyDemoLogicV2.sol)
 - [script/DeployTransparentProxy.s.sol](./script/DeployTransparentProxy.s.sol)
 - [script/UpgradeTransparentProxy.s.sol](./script/UpgradeTransparentProxy.s.sol)
@@ -71,7 +71,7 @@
 
 ### 运行方式
 
-- 部署 `TransparentProxyDemoLogic`
+- 部署 `TransparentProxyDemoLogicV1`
 - 用 `TransparentUpgradeableProxy` 包一层
 - 构造时把 `initialize` 的 calldata 一起传进去
 - 代理构造时自动创建 `ProxyAdmin`
@@ -93,7 +93,7 @@
 
 ### 详细调用过程
 
-1. 部署 `TransparentProxyDemoLogic` 作为 V1 逻辑合约。
+1. 部署 `TransparentProxyDemoLogicV1` 作为 V1 逻辑合约。
 2. 部署 `TransparentUpgradeableProxy`，传入：
    - V1 地址
    - `ProxyAdmin` owner 地址
@@ -119,7 +119,7 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 
 对应文件：
 
-- [src/UUPSDemoLogic.sol](./src/UUPSDemoLogic.sol)
+- [src/UUPSDemoLogicV1.sol](./src/UUPSDemoLogicV1.sol)
 - [src/UUPSDemoLogicV2.sol](./src/UUPSDemoLogicV2.sol)
 - [script/DeployUUPSDemo.s.sol](./script/DeployUUPSDemo.s.sol)
 - [script/UpgradeUUPSDemo.s.sol](./script/UpgradeUUPSDemo.s.sol)
@@ -127,7 +127,7 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 
 ### 运行方式
 
-- 部署 `UUPSDemoLogic`
+- 部署 `UUPSDemoLogicV1`
 - 用 `ERC1967Proxy` 包一层
 - 在代理构造时完成 `initialize`
 - 通过实现合约暴露的 `upgradeToAndCall` 完成升级
@@ -147,7 +147,7 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 
 ### 详细调用过程
 
-1. 部署 `UUPSDemoLogic` 作为 V1 实现合约。
+1. 部署 `UUPSDemoLogicV1` 作为 V1 实现合约。
 2. 部署 `ERC1967Proxy`，把 V1 地址和 `initialize(owner, initialValue)` 数据一起传入。
 3. 代理构造时执行初始化，把业务状态写进代理存储。
 4. 普通用户通过代理调用 `setValue`、`add` 等函数：
@@ -170,9 +170,9 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 
 - 透明代理：升级入口在 `ProxyAdmin` 侧
 - UUPS：升级入口在实现合约侧
-- `MyTokenContract`：你当前项目里实际用的是透明代理
+- `MyTokenContractV1`：你当前项目里实际用的是透明代理
 
 ## 5. 当前建议
 
-如果你只是想把 `MyTokenContract` 继续维护下去，就按 OpenZeppelin 透明代理写法理解和部署。
+如果你只是想把 `MyTokenContractV1` 继续维护下去，就按 OpenZeppelin 透明代理写法理解和部署。
 如果你想做一套更轻的升级结构，再看 UUPS 示例就行。

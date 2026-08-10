@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/UUPSDemoLogic.sol";
+import "../src/UUPSDemoLogicV1.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
@@ -26,12 +26,8 @@ contract DeployUUPSDemo is Script {
 
         vm.startBroadcast(privateKey);
 
-        UUPSDemoLogic logic = new UUPSDemoLogic();
-        bytes memory initData = abi.encodeWithSelector(
-            UUPSDemoLogic.initialize.selector,
-            owner,
-            initialValue
-        );
+        UUPSDemoLogicV1 logic = new UUPSDemoLogicV1();
+        bytes memory initData = abi.encodeWithSelector(UUPSDemoLogicV1.initialize.selector, owner, initialValue);
         ERC1967Proxy proxy = new ERC1967Proxy(address(logic), initData);
 
         vm.stopBroadcast();

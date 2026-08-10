@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import "./TransparentProxyDemoLogic.sol";
+import "./TransparentProxyDemoLogicV1.sol";
 
 /**
  * @title TransparentProxyDemoLogicV2
@@ -10,7 +10,7 @@ import "./TransparentProxyDemoLogic.sol";
  * 这个版本故意保持和 V1 一样的存储布局，只额外增加一个纯函数，方便验证升级是否生效。
  * 代理升级时，真正变化的是 implementation 槽位指向的新逻辑地址，代理中的业务状态不会丢。
  */
-contract TransparentProxyDemoLogicV2 is TransparentProxyDemoLogic {
+contract TransparentProxyDemoLogicV2 is TransparentProxyDemoLogicV1 {
     /**
      * @notice 返回当前逻辑版本号。
      * @dev 用这个函数来证明代理已经切换到新的实现合约。

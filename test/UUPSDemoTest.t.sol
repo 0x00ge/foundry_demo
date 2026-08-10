@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/UUPSDemoLogic.sol";
+import "../src/UUPSDemoLogicV1.sol";
 import "../src/UUPSDemoLogicV2.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -23,20 +23,20 @@ contract UUPSDemoTest is Test {
     address internal owner;
     address internal otherUser;
 
-    UUPSDemoLogic internal logicV1;
+    UUPSDemoLogicV1 internal logicV1;
     ERC1967Proxy internal proxy;
-    UUPSDemoLogic internal app;
+    UUPSDemoLogicV1 internal app;
 
     function setUp() public {
         owner = address(0xB0B);
         otherUser = address(0xC0C);
 
-        logicV1 = new UUPSDemoLogic();
+        logicV1 = new UUPSDemoLogicV1();
 
-        bytes memory initData = abi.encodeWithSelector(UUPSDemoLogic.initialize.selector, owner, uint256(11));
+        bytes memory initData = abi.encodeWithSelector(UUPSDemoLogicV1.initialize.selector, owner, uint256(11));
 
         proxy = new ERC1967Proxy(address(logicV1), initData);
-        app = UUPSDemoLogic(address(proxy));
+        app = UUPSDemoLogicV1(address(proxy));
     }
 
     /**

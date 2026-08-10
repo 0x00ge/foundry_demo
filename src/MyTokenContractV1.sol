@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title MyTokenContract
+ * @title MyTokenContractV1
  * @notice 基于 OpenZeppelin Upgradeable 的可升级 ERC20 代币合约。
  * @dev
  *  - 使用 Initializable 防止实现合约被直接初始化。
@@ -30,14 +30,11 @@ pragma solidity ^0.8.20;
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-
-contract MyTokenContract is
-    Initializable,
-    OwnableUpgradeable,
-    ERC20Upgradeable,
+import {
     ERC20BurnableUpgradeable
-{
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+
+contract MyTokenContractV1 is Initializable, OwnableUpgradeable, ERC20Upgradeable, ERC20BurnableUpgradeable {
     /**
      * @notice 存放五个用于代币分配的资金池地址。
      * @dev 由 setPoolTokenByAdmin 使用，按业务需求将代币铸造到各个池。
@@ -112,10 +109,7 @@ contract MyTokenContract is
      * @param _admin  初始管理员地址（未校验是否为零地址，调用方需自行保证）。
      */
     function initialize(address _owner, address _admin) public initializer {
-        require(
-            _owner != address(0),
-            "MyTokenContract initialize : _owner can't be zero address"
-        );
+        require(_owner != address(0), "MyTokenContractV1 initialize : _owner can't be zero address");
         __ERC20_init(NAME, SYMBOL);
         __ERC20Burnable_init();
         __Ownable_init(_owner);
@@ -128,10 +122,7 @@ contract MyTokenContract is
      * @dev 与 onlyOwner 区分：owner 管理核心配置，admin 管理业务操作（如代币分配）。
      */
     modifier onlyAdmin() {
-        require(
-            msg.sender == admin,
-            "MyTokenContract onlyAdmin : only admin can call this function"
-        );
+        require(msg.sender == admin, "MyTokenContractV1 onlyAdmin : only admin can call this function");
         _;
     }
 
@@ -199,10 +190,7 @@ contract MyTokenContract is
      * @dev 若 isAllocation 为 true，则回滚，防止重复分配或分配后重配池地址。
      */
     function _beforeSetPoolAllocation() internal virtual {
-        require(
-            !isAllocation,
-            "MyTokenContract _beforePoolAllocation : OHANA is already allocate"
-        );
+        require(!isAllocation, "MyTokenContractV1 _beforePoolAllocation : OHANA is already allocate");
     }
 
     /**
@@ -211,25 +199,12 @@ contract MyTokenContract is
      * @param _pool 待校验的资金池配置。
      */
     function _beforeSetPool(PoolConfig memory _pool) internal virtual {
+        require(_pool.miningPool != address(0), "MyTokenContractV1 _beforeSetPool: Missing MiningPool address");
+        require(_pool.directSalePool != address(0), "MyTokenContractV1 _beforeSetPool: Missing DirectSalePool address");
         require(
-            _pool.miningPool != address(0),
-            "MyTokenContract _beforeSetPool: Missing MiningPool address"
+            _pool.investorSalePool != address(0), "MyTokenContractV1 _beforeSetPool: Missing InvestorSalePool address"
         );
-        require(
-            _pool.directSalePool != address(0),
-            "MyTokenContract _beforeSetPool: Missing DirectSalePool address"
-        );
-        require(
-            _pool.investorSalePool != address(0),
-            "MyTokenContract _beforeSetPool: Missing InvestorSalePool address"
-        );
-        require(
-            _pool.ecosystemPool != address(0),
-            "MyTokenContract _beforeSetPool: Missing EcosystemPool address"
-        );
-        require(
-            _pool.foundationPool != address(0),
-            "MyTokenContract _beforeSetPool: Missing FoundationPool address"
-        );
+        require(_pool.ecosystemPool != address(0), "MyTokenContractV1 _beforeSetPool: Missing EcosystemPool address");
+        require(_pool.foundationPool != address(0), "MyTokenContractV1 _beforeSetPool: Missing FoundationPool address");
     }
 }

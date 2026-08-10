@@ -1,33 +1,32 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";               // Foundry 标准测试库，提供 vm、assert 等工具
-import "../src/MyTokenContract.sol";       // 待测试的代币逻辑合约
+import "forge-std/Test.sol"; // Foundry 标准测试库，提供 vm、assert 等工具
+import "../src/MyTokenContractV1.sol"; // 待测试的代币逻辑合约
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol"; // 透明代理合约
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";                 // 代理管理员合约
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol"; // 代理管理员合约
 
 /**
  * @title MyTokenContractTest
- * @notice MyTokenContract 的 Foundry 单元测试套件
+ * @notice MyTokenContractV1 的 Foundry 单元测试套件
  * @dev 覆盖初始化、权限控制、资金池配置、代币分配及 ERC20 标准功能
  */
 contract MyTokenContractTest is Test {
-    MyTokenContract public token;           // 通过代理调用的代币合约实例（类型为 MyTokenContract）
-    ProxyAdmin public proxyAdmin;           // ProxyAdmin 合约实例，用于管理代理升级
+    MyTokenContractV1 public token; // 通过代理调用的代币合约实例（类型为 MyTokenContractV1）
+    ProxyAdmin public proxyAdmin; // ProxyAdmin 合约实例，用于管理代理升级
 
-    bytes32 internal constant ERC1967_ADMIN_SLOT =
-        0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+    bytes32 internal constant ERC1967_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
     // 角色地址（均使用硬编码的测试地址，避免与真实账户混淆）
-    address public owner;                   // 合约的 Owner（最高权限）
-    address public admin;                   // 业务管理员（执行分配）
-    address public user1;                   // 普通用户 1
-    address public user2;                   // 普通用户 2
-    address public miningPool;              // 挖矿池地址
-    address public directSalePool;          // 直销池地址
-    address public investorSalePool;        // 投资者销售池地址
-    address public ecosystemPool;           // 生态建设池地址
-    address public foundationPool;          // 基金会池地址
+    address public owner; // 合约的 Owner（最高权限）
+    address public admin; // 业务管理员（执行分配）
+    address public user1; // 普通用户 1
+    address public user2; // 普通用户 2
+    address public miningPool; // 挖矿池地址
+    address public directSalePool; // 直销池地址
+    address public investorSalePool; // 投资者销售池地址
+    address public ecosystemPool; // 生态建设池地址
+    address public foundationPool; // 基金会池地址
 
     // 最大总供应量常量（1e15 = 10 亿 * 10^6，与合约中定义一致）
     uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10 ** 6; // 1e15
@@ -36,11 +35,11 @@ contract MyTokenContractTest is Test {
      * @notice 在每个测试用例执行前运行，部署全新的合约环境
      * @dev 流程：
      *      1. 分配测试账户地址
-     *      2. 部署逻辑合约（MyTokenContract）
+     *      2. 部署逻辑合约（MyTokenContractV1）
      *      3. 部署 ProxyAdmin
      *      4. 编码 initialize 调用数据
      *      5. 部署透明代理（TransparentUpgradeableProxy），并传入初始化数据
-     *      6. 将代理地址转换为 MyTokenContract 类型，方便后续调用
+     *      6. 将代理地址转换为 MyTokenContractV1 类型，方便后续调用
      */
     function setUp() public {
         // 1. 创建测试账户（使用固定地址，确保可预测性）
@@ -55,27 +54,19 @@ contract MyTokenContractTest is Test {
         foundationPool = address(0x3005);
 
         // 2. 部署逻辑合约（即实现合约，不含代理）
-        MyTokenContract logic = new MyTokenContract();
+        MyTokenContractV1 logic = new MyTokenContractV1();
 
         // 4. 编码 initialize 函数的调用数据，传入 owner 和 admin
-        bytes memory initData = abi.encodeWithSelector(
-            MyTokenContract.initialize.selector,
-            owner,
-            admin
-        );
+        bytes memory initData = abi.encodeWithSelector(MyTokenContractV1.initialize.selector, owner, admin);
 
         // 5. 部署透明代理，将逻辑合约、ProxyAdmin owner 和初始化数据传入
         //    代理构造函数会执行 delegatecall 到逻辑合约的 initialize
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(logic),
-            address(this),
-            initData
-        );
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(logic), address(this), initData);
 
         proxyAdmin = ProxyAdmin(address(uint160(uint256(vm.load(address(proxy), ERC1967_ADMIN_SLOT)))));
 
-        // 6. 将代理地址转换为 MyTokenContract 类型，方便调用业务函数
-        token = MyTokenContract(address(proxy));
+        // 6. 将代理地址转换为 MyTokenContractV1 类型，方便调用业务函数
+        token = MyTokenContractV1(address(proxy));
 
         // 注：在 Foundry 测试中，测试合约本身就是 ProxyAdmin owner，
         //     无需额外转移。若需要模拟多签钱包，可通过 vm.prank 模拟 owner 操作。
@@ -87,7 +78,7 @@ contract MyTokenContractTest is Test {
      */
     function _setPoolAddresses() internal {
         // 构建资金池结构体，填入之前分配的测试地址
-        MyTokenContract.PoolConfig memory pool = MyTokenContract.PoolConfig({
+        MyTokenContractV1.PoolConfig memory pool = MyTokenContractV1.PoolConfig({
             miningPool: miningPool,
             directSalePool: directSalePool,
             investorSalePool: investorSalePool,
@@ -149,7 +140,7 @@ contract MyTokenContractTest is Test {
      * @dev 验证存储更新和事件触发
      */
     function test_SetPoolAddresses() public {
-        MyTokenContract.PoolConfig memory pool = MyTokenContract.PoolConfig({
+        MyTokenContractV1.PoolConfig memory pool = MyTokenContractV1.PoolConfig({
             miningPool: miningPool,
             directSalePool: directSalePool,
             investorSalePool: investorSalePool,
@@ -182,8 +173,8 @@ contract MyTokenContractTest is Test {
      * @dev 分别测试五个池，此处仅以 miningPool 为例
      */
     function test_SetPoolAddresses_RevertZeroAddress() public {
-        MyTokenContract.PoolConfig memory pool = MyTokenContract.PoolConfig({
-            miningPool: address(0),     // 故意设为零地址
+        MyTokenContractV1.PoolConfig memory pool = MyTokenContractV1.PoolConfig({
+            miningPool: address(0), // 故意设为零地址
             directSalePool: directSalePool,
             investorSalePool: investorSalePool,
             ecosystemPool: ecosystemPool,
@@ -191,7 +182,7 @@ contract MyTokenContractTest is Test {
         });
         vm.prank(owner);
         // 预期回滚消息来自 _beforeSetPool 校验
-        vm.expectRevert("MyTokenContract _beforeSetPool: Missing MiningPool address");
+        vm.expectRevert("MyTokenContractV1 _beforeSetPool: Missing MiningPool address");
         token.setPoolAddressByOwner(pool);
     }
 
@@ -200,7 +191,7 @@ contract MyTokenContractTest is Test {
      * @dev 使用 admin 地址尝试调用，预期被 Ownable 拒绝
      */
     function test_SetPoolAddresses_RevertNonOwner() public {
-        MyTokenContract.PoolConfig memory pool = MyTokenContract.PoolConfig({
+        MyTokenContractV1.PoolConfig memory pool = MyTokenContractV1.PoolConfig({
             miningPool: miningPool,
             directSalePool: directSalePool,
             investorSalePool: investorSalePool,
@@ -228,10 +219,10 @@ contract MyTokenContractTest is Test {
         assertEq(token.isAllocation(), true);
 
         // 验证各池余额（分别计算期望值）
-        assertEq(token.balanceOf(miningPool), (MAX_SUPPLY * 3) / 10);   // 30%
+        assertEq(token.balanceOf(miningPool), (MAX_SUPPLY * 3) / 10); // 30%
         assertEq(token.balanceOf(directSalePool), (MAX_SUPPLY * 2) / 10); // 20%
-        assertEq(token.balanceOf(investorSalePool), MAX_SUPPLY / 10);     // 10%
-        assertEq(token.balanceOf(ecosystemPool), MAX_SUPPLY / 10);        // 10%
+        assertEq(token.balanceOf(investorSalePool), MAX_SUPPLY / 10); // 10%
+        assertEq(token.balanceOf(ecosystemPool), MAX_SUPPLY / 10); // 10%
         assertEq(token.balanceOf(foundationPool), (MAX_SUPPLY * 3) / 10); // 30%
     }
 
@@ -246,7 +237,7 @@ contract MyTokenContractTest is Test {
 
         // 第二次分配应回滚
         vm.prank(admin);
-        vm.expectRevert("MyTokenContract _beforePoolAllocation : OHANA is already allocate");
+        vm.expectRevert("MyTokenContractV1 _beforePoolAllocation : OHANA is already allocate");
         token.setPoolTokenByAdmin();
     }
 
@@ -257,7 +248,7 @@ contract MyTokenContractTest is Test {
     function test_Allocate_RevertIfNotAdmin() public {
         _setPoolAddresses();
         vm.prank(user1);
-        vm.expectRevert("MyTokenContract onlyAdmin : only admin can call this function");
+        vm.expectRevert("MyTokenContractV1 onlyAdmin : only admin can call this function");
         token.setPoolTokenByAdmin();
     }
 
@@ -330,13 +321,13 @@ contract MyTokenContractTest is Test {
     // 它们与实际事件签名必须完全一致（包括 indexed 参数）。
 
     /**
-     * @dev 对应 MyTokenContract.SetAdmin 事件
+     * @dev 对应 MyTokenContractV1.SetAdmin 事件
      */
     event SetAdmin(address indexed _newAddress, address _oldAddress);
 
     /**
-     * @dev 对应 MyTokenContract.SetPool 事件
+     * @dev 对应 MyTokenContractV1.SetPool 事件
      *      结构体作为 indexed 参数，事件签名中的 topic 是整个结构体的 keccak256 哈希
      */
-    event SetPool(MyTokenContract.PoolConfig indexed _MyTokenContractPool);
+    event SetPool(MyTokenContractV1.PoolConfig indexed _MyTokenContractPool);
 }
