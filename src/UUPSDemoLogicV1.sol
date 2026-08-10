@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 /**
  * @title UUPSDemoLogicV1
@@ -20,7 +21,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
  * - version/value 是业务状态，也写入代理存储。
  * - 新版本只能在末尾追加状态，不能调整已有变量或继承顺序。
  */
-contract UUPSDemoLogicV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract UUPSDemoLogicV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, ERC20Upgradeable {
+    string private constant TOKEN_NAME = "UUPS Demo Token";
+    string private constant TOKEN_SYMBOL = "UDT";
+
     /// @notice 当前业务实现版本，实际状态保存在代理地址。
     string public version;
 
@@ -50,8 +54,19 @@ contract UUPSDemoLogicV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * value 不在初始化阶段设置，使用 Solidity 默认值 0。
      */
     function initialize(address initialOwner) public initializer {
+        __ERC20_init(TOKEN_NAME, TOKEN_SYMBOL);
         __Ownable_init(initialOwner);
         version = "UUPSDemoLogicV1";
+    }
+
+    /**
+     * @notice 向目标地址铸造代币。
+     * @param target 接收代币的目标地址。
+     * @param amount 铸造数量，使用代币最小单位（默认 18 位小数）。
+     * @dev 只有代理中的 owner 可以铸造；ERC20 会拒绝零地址。
+     */
+    function mint(address target, uint256 amount) external onlyOwner {
+        _mint(target, amount);
     }
 
     /**

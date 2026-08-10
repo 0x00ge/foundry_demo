@@ -34,3 +34,9 @@ src/TransparentProxyDemoLogicV1.sol:TransparentProxyDemoLogicV1 \
   --verifier etherscan \
   --etherscan-api-key Q7RRJ6VZ43JIB8J97JU2U9SYBS8N29EGQY \
   --watch
+
+
+# 部署账户：0xDC03164a68335A61D0792aA1F6418E62528b8Cbe
+# 部署私钥：0xdab672c164c371e30650db8a53e4b6d0c4a63edfc1d1f7e839c174e4f2fc7943
+# 测试网：https://bsc-testnet-dataseed.bnbchain.org
+# 目标地址：0xa9A6A25E8875ec942444B404c9d9Ca0B0C6dF17F

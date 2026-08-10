@@ -29,6 +29,7 @@ contract UUPSDemoTest is Test {
 
     address internal owner;
     address internal otherUser;
+    address internal mintTarget;
 
     UUPSDemoLogicV1 internal logicV1;
     ERC1967Proxy internal proxy;
@@ -37,6 +38,7 @@ contract UUPSDemoTest is Test {
     function setUp() public {
         owner = address(0xB0B);
         otherUser = address(0xC0C);
+        mintTarget = address(0xD0D);
 
         // logicV1 只存放代码；构造函数会禁用 logicV1 自身的 initialize。
         logicV1 = new UUPSDemoLogicV1();
@@ -65,6 +67,10 @@ contract UUPSDemoTest is Test {
         assertEq(app.owner(), owner);
         assertEq(app.value(), 0);
         assertEq(app.version(), "UUPSDemoLogicV1");
+        assertEq(app.name(), "UUPS Demo Token");
+        assertEq(app.symbol(), "UDT");
+        assertEq(app.decimals(), 18);
+        assertEq(app.totalSupply(), 0);
     }
 
     /**
@@ -104,6 +110,37 @@ contract UUPSDemoTest is Test {
     }
 
     /**
+     * @notice owner 可以向指定目标地址铸造代币。
+     */
+    function test_OwnerCanMintToTarget() public {
+        uint256 amount = 250 ether;
+
+        vm.prank(owner);
+        app.mint(mintTarget, amount);
+
+        assertEq(app.balanceOf(mintTarget), amount);
+        assertEq(app.totalSupply(), amount);
+    }
+
+    /**
+     * @notice 非 owner 不能铸造代币。
+     */
+    function test_RevertIfNonOwnerMints() public {
+        vm.prank(otherUser);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", otherUser));
+        app.mint(mintTarget, 1 ether);
+    }
+
+    /**
+     * @notice ERC20 不允许向零地址铸造。
+     */
+    function test_RevertIfMintTargetIsZeroAddress() public {
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSignature("ERC20InvalidReceiver(address)", address(0)));
+        app.mint(address(0), 1 ether);
+    }
+
+    /**
      * @notice 非 owner 不允许调用 onlyOwner 业务函数。
      */
     function test_RevertIfNotOwner() public {
@@ -118,6 +155,8 @@ contract UUPSDemoTest is Test {
     function test_UpgradeToV2KeepsState() public {
         vm.prank(owner);
         app.setValue(21);
+        vm.prank(owner);
+        app.mint(mintTarget, 10 ether);
 
         UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
 
@@ -129,6 +168,36 @@ contract UUPSDemoTest is Test {
         // 没有执行额外迁移函数，因此代理中已有的 V1 version 状态保持不变。
         assertEq(upgradedApp.version(), "UUPSDemoLogicV1");
         assertEq(upgradedApp.owner(), owner);
+        assertEq(upgradedApp.name(), "UUPS Demo Token");
+        assertEq(upgradedApp.symbol(), "UDT");
+        assertEq(upgradedApp.balanceOf(mintTarget), 10 ether);
+        assertEq(upgradedApp.totalSupply(), 10 ether);
+
+        vm.prank(owner);
+        upgradedApp.mint(mintTarget, 5 ether);
+        assertEq(upgradedApp.balanceOf(mintTarget), 15 ether);
+        assertEq(upgradedApp.totalSupply(), 15 ether);
+    }
+
+    /**
+     * @notice 旧版代理升级后可通过 V2 的 reinitializer 补初始化 ERC20 元数据。
+     */
+    function test_V2CanInitializeTokenMetadataOnce() public {
+        UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
+
+        vm.prank(owner);
+        app.upgradeToAndCall(address(logicV2), "");
+
+        UUPSDemoLogicV2 upgradedApp = UUPSDemoLogicV2(address(proxy));
+        vm.prank(owner);
+        upgradedApp.initializeToken();
+
+        assertEq(upgradedApp.name(), "UUPS Demo Token");
+        assertEq(upgradedApp.symbol(), "UDT");
+
+        vm.prank(owner);
+        vm.expectRevert(INVALID_INITIALIZATION);
+        upgradedApp.initializeToken();
     }
 
     /**
@@ -182,9 +251,10 @@ contract UUPSDemoTest is Test {
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", otherUser));
         upgradedApp.add1();
 
-        vm.prank(owner);
+        vm.startPrank(owner);
         upgradedApp.add1();
         upgradedApp.add2();
+        vm.stopPrank();
         assertEq(upgradedApp.value(), 3);
     }
 

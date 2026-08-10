@@ -13,7 +13,7 @@ import "../src/UUPSDemoLogicV2.sol";
  * 1. 读取代理地址和广播私钥
  * 2. 部署 V2 实现合约；V2 实现自身同样会锁定初始化
  * 3. 通过代理地址调用 upgradeToAndCall，切换 implementation
- * 4. 由于 V2 没有新增初始化入口，本示例使用空 calldata 完成升级
+ * 4. 通过 initializeToken 补充 ERC20 元数据初始化
  *
  * 前提：
  * - 这个私钥对应的钱包必须是当前 proxy 的 owner
@@ -38,7 +38,7 @@ contract UpgradeUUPSDemo is Script {
      * 2. 广播：
      *    - 部署 V2 实现
      *    - 从代理地址调用 upgradeToAndCall
-     *    - 使用空 calldata，表示本次升级没有额外状态迁移
+     *    - 使用 initializeToken calldata，补充 ERC20 元数据
      *
      * 3. 结果校验：
      *    - implementation 槽必须指向新 V2
@@ -69,13 +69,15 @@ contract UpgradeUUPSDemo is Script {
         // 部署 V2 只会产生新的代码地址，不会改变现有代理状态。
         UUPSDemoLogicV2 logicV2 = new UUPSDemoLogicV2();
 
-        // 空 calldata 表示本次升级没有额外的状态迁移。
+        // initializeToken 使用 reinitializer(2) 补充 ERC20 元数据。
         // upgradeToAndCall 会依次完成：
         // 1. onlyProxy：确认调用来自代理上下文
         // 2. _authorizeUpgrade：确认代理存储中的 owner 有权限
         // 3. proxiableUUID：确认 V2 使用兼容的 ERC1967 implementation 槽
         // 4. 写入新的 implementation 槽
-        proxy.upgradeToAndCall(address(logicV2), "");
+        // 5. 在同一笔交易中初始化 ERC20 名称和符号
+        bytes memory migrationData = abi.encodeWithSelector(UUPSDemoLogicV2.initializeToken.selector);
+        proxy.upgradeToAndCall(address(logicV2), migrationData);
 
         // 升级后通过同一个 proxy 地址切换为 V2 ABI。
         UUPSDemoLogicV2 upgradedProxy = UUPSDemoLogicV2(payable(proxyAddress));

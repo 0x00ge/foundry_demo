@@ -130,8 +130,9 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 
 - 部署 `UUPSDemoLogicV1`
 - 用 `ERC1967Proxy` 包一层
-- 在代理构造时完成 `initialize(owner)`，业务数值从默认值 `0` 开始
+- 在代理构造时完成 `initialize(owner)`，代币余额和业务数值从默认值 `0` 开始
 - 通过实现合约暴露的 `upgradeToAndCall` 完成升级
+- 代理 owner 可以通过 `mint(target, amount)` 向目标地址铸造代币
 
 ### UUPS 规则
 
@@ -151,17 +152,18 @@ UUPS 的核心思路是：升级逻辑写在实现合约里，不单独放 `Prox
 1. 部署 `UUPSDemoLogicV1` 作为 V1 实现合约。
 2. 部署 `ERC1967Proxy`，把 V1 地址和 `initialize(owner)` 数据一起传入。
 3. 代理构造时执行初始化，把业务状态写进代理存储。
-4. 普通用户通过代理调用 `setValue`、`add` 等函数：
+4. 通过代理调用 `setValue`、`add`、`mint` 等函数：
    - 代理只做转发
    - 业务逻辑在实现合约里执行
    - 状态仍然落在代理上
+   - `mint(target, amount)` 只能由代理 owner 调用，`amount` 使用 18 位精度的最小单位
 5. `owner` 调用 `upgradeToAndCall(newImplementation, data)` 时：
    - 先通过 `onlyProxy` 检查，确认不是直接打到实现合约
    - 再进入 `_authorizeUpgrade`
    - `_authorizeUpgrade` 里用 `onlyOwner` 限定升级权限
    - 权限通过后，执行 UUPS 的安全升级检查
 6. 若新实现合约通过 `proxiableUUID()` 校验，代理切换到新实现地址。
-7. 本示例的 V2 没有新增初始化入口，因此使用空 data 完成 implementation 切换。
+7. V2 通过 `initializeToken` 这个 `reinitializer(2)` 补充 ERC20 元数据；升级脚本会在切换 implementation 的同一笔交易中执行它。
    代理中已有的 `owner`、`version` 和 `value` 状态保持不变。
 8. 升级完成后，代理地址不变，旧状态保留，新逻辑生效。
 9. 直接对实现合约地址调用 `initialize` 或 `upgradeToAndCall` 会回滚：

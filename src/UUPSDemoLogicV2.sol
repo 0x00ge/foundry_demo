@@ -4,12 +4,16 @@ pragma solidity ^0.8.20;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 /**
  * @title UUPSDemoLogicV2
  * @notice UUPS 的第二版实现合约。
  */
-contract UUPSDemoLogicV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable  {
+contract UUPSDemoLogicV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, ERC20Upgradeable {
+    string private constant TOKEN_NAME = "UUPS Demo Token";
+    string private constant TOKEN_SYMBOL = "UDT";
+
     /// @notice 当前业务实现版本，实际状态保存在代理地址。
     string public version;
 
@@ -39,8 +43,27 @@ contract UUPSDemoLogicV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable  
      * value 不在初始化阶段设置，使用 Solidity 默认值 0。
      */
     function initialize(address initialOwner) public initializer {
+        __ERC20_init(TOKEN_NAME, TOKEN_SYMBOL);
         __Ownable_init(initialOwner);
         version = "UUPSDemoLogicV2";
+    }
+
+    /**
+     * @notice 为已部署的旧版代理补初始化 ERC20 元数据。
+     * @dev 仅允许执行一次，适用于从未包含 ERC20 的旧版 UUPS 代理升级到 V2。
+     */
+    function initializeToken() external reinitializer(2) onlyOwner {
+        __ERC20_init(TOKEN_NAME, TOKEN_SYMBOL);
+    }
+
+    /**
+     * @notice 向目标地址铸造代币。
+     * @param target 接收代币的目标地址。
+     * @param amount 铸造数量，使用代币最小单位（默认 18 位小数）。
+     * @dev 只有代理中的 owner 可以铸造；ERC20 会拒绝零地址。
+     */
+    function mint(address target, uint256 amount) external onlyOwner {
+        _mint(target, amount);
     }
 
     /**
