@@ -39,4 +39,7 @@ src/TransparentProxyDemoLogicV1.sol:TransparentProxyDemoLogicV1 \
 # 部署账户：0xDC03164a68335A61D0792aA1F6418E62528b8Cbe
 # 部署私钥：0xdab672c164c371e30650db8a53e4b6d0c4a63edfc1d1f7e839c174e4f2fc7943
 # 测试网：https://bsc-testnet-dataseed.bnbchain.org
+# 测试key：Q7RRJ6VZ43JIB8J97JU2U9SYBS8N29EGQY
 # 目标地址：0xa9A6A25E8875ec942444B404c9d9Ca0B0C6dF17F
+
+forge verify-contract '0x9e517Dd717D8a4e9C0EeE1E7B0F8C4AA2B7280DA' 'src/UUPSDemoLogicV1.sol:UUPSDemoLogicV1' --chain 97 --verifier sourcify --creation-transaction-hash '0x3a549b5072746403d67112cc790f4715140b0a0a8e145e816ae55d0714b002b1' --watch
