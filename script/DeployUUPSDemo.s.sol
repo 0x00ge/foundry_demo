@@ -35,8 +35,7 @@ contract DeployUUPSDemo is Script {
      * - logic：只保存 V1 的代码，不能作为业务入口直接使用。
      * - proxy：保存 implementation 槽和全部业务状态，业务方应始终使用这个地址。
      *
-     * `vm.startBroadcast(privateKey)` 之后的合约创建交易会使用 privateKey
-     * 发送到目标网络。广播结束后，脚本继续读取并校验链上状态，但不会再发送交易。
+     * `vm.startBroadcast(privateKey)` 之后的合约创建交易会使用 privateKey 发送到目标网络。广播结束后，脚本继续读取并校验链上状态，但不会再发送交易。
      */
     function run() external {
         // PRIVATE_KEY 同时决定交易签名者和 V1 的初始 owner。
@@ -51,7 +50,7 @@ contract DeployUUPSDemo is Script {
 
         // 第二步：编码代理部署时要执行的初始化调用。
         // selector 和参数必须与 V1.initialize(address) 完全匹配。
-        bytes memory initData = abi.encodeWithSelector(UUPSDemoLogicV1.initialize.selector, owner);
+        bytes memory initData = abi.encodeCall(UUPSDemoLogicV1.initialize, owner);
 
         // 第三步：部署 ERC1967Proxy。
         // ERC1967Proxy 构造函数会把 initData delegatecall 到 logic：

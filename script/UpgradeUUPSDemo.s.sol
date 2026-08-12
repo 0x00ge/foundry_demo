@@ -76,7 +76,7 @@ contract UpgradeUUPSDemo is Script {
         // 3. proxiableUUID：确认 V2 使用兼容的 ERC1967 implementation 槽
         // 4. 写入新的 implementation 槽
         // 5. 在同一笔交易中初始化 ERC20 名称和符号
-        bytes memory migrationData = abi.encodeWithSelector(UUPSDemoLogicV2.initializeToken.selector);
+        bytes memory migrationData = abi.encodeCall(UUPSDemoLogicV2.initializeToken);
         proxy.upgradeToAndCall(address(logicV2), migrationData);
 
         // 升级后通过同一个 proxy 地址切换为 V2 ABI。

@@ -56,7 +56,7 @@ contract DeployTransparentProxy is Script {
 
         // 第二步：编码 initialize(owner)。
         // 这段 calldata 会在 TransparentUpgradeableProxy 构造阶段 delegatecall 到 logic。
-        bytes memory initData = abi.encodeWithSelector(TransparentProxyDemoLogicV1.initialize.selector, owner);
+        bytes memory initData = abi.encodeCall(TransparentProxyDemoLogicV1.initialize, owner);
 
         // 第三步：部署透明代理。
         // 构造函数内部会部署 ProxyAdmin、设置 implementation/admin，
