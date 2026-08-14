@@ -27,6 +27,15 @@ forge script script/DeployUUPSDemo.s.sol:DeployUUPSDemo \
   --broadcast
 ```
 
+```bash
+cast send 0x666FCa95225748de52E0a23B9fe6a469E986e339 \
+  "mint(address,uint256)" \
+  0xDC03164a68335A61D0792aA1F6418E62528b8Cbe \
+  6000000000000000000 \
+  --rpc-url https://bsc-testnet-dataseed.bnbchain.org \
+  --private-key 0xdab672c164c371e30650db8a53e4b6d0c4a63edfc1d1f7e839c174e4f2fc7943
+```
+
 ### 输出结果
 
 ```bash
