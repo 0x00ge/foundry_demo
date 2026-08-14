@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+import "forge-std/console.sol";
 import "forge-std/Script.sol";
 import "../src/UUPSDemoLogicV1.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -24,10 +25,6 @@ import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
  * - PRIVATE_KEY：广播私钥，必填
  */
 contract DeployUUPSDemo is Script {
-    // EIP-1967 implementation 槽位。
-    // ERC1967Proxy 部署完成后，代理会把 V1 实现地址写入这个槽位。
-    bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-
     /**
      * @notice 部署 V1 实现合约和 ERC1967Proxy。
      * @dev
@@ -43,14 +40,15 @@ contract DeployUUPSDemo is Script {
         address owner = vm.addr(privateKey);
 
         vm.startBroadcast(privateKey);
-
         // 第一步：部署实现合约。
         // V1 构造函数会锁定实现地址自身的 initializer，防止被直接初始化。
-        UUPSDemoLogicV1 logic = new UUPSDemoLogicV1();
+        UUPSDemoLogicV1 logicV1 = new UUPSDemoLogicV1();
+        console.log("********** 1 **********");
 
         // 第二步：编码代理部署时要执行的初始化调用。
         // selector 和参数必须与 V1.initialize(address) 完全匹配。
         bytes memory initData = abi.encodeCall(UUPSDemoLogicV1.initialize, owner);
+        console.log("********** 2 **********");
 
         // 第三步：部署 ERC1967Proxy。
         // ERC1967Proxy 构造函数会把 initData delegatecall 到 logic：
@@ -58,29 +56,12 @@ contract DeployUUPSDemo is Script {
         // - msg.sender 保持为部署交易的调用者
         // - address(this) 是 proxy
         // 因此 owner/version 等状态最终写入 proxy 存储。
-        ERC1967Proxy proxy = new ERC1967Proxy(address(logic), initData);
-
-        // 通过 V1 ABI 访问代理地址，后续业务调用都应使用 app/proxy 地址。
-        UUPSDemoLogicV1 app = UUPSDemoLogicV1(address(proxy));
-
-        // 第四步：部署后预检。
-        // 如果初始化 delegatecall 失败，ERC1967Proxy 部署本身会回滚；
-        // 这里进一步确认关键业务状态确实写到了代理，而不是实现地址。
-        require(app.owner() == owner, "UUPS deploy: owner initialization failed");
-        require(
-            keccak256(bytes(app.version())) == keccak256(bytes("UUPSDemoLogicV1")),
-            "UUPS deploy: version initialization failed"
-        );
-
+        ERC1967Proxy proxy = new ERC1967Proxy(address(logicV1), initData);
+        console.log("********** 3 **********");
         vm.stopBroadcast();
 
-        // 从 EIP-1967 槽位读取真实实现地址，避免只依赖脚本内存中的 logic 变量。
-        address storedImplementation = address(uint160(uint256(vm.load(address(proxy), IMPLEMENTATION_SLOT))));
-
-        console2.log("logic:", address(logic));
-        console2.log("proxy:", address(proxy));
-        console2.log("owner:", owner);
-        console2.log("implementation:", storedImplementation);
-        console2.log("version:", app.version());
+        console.log("owner : ", owner);
+        console.log("proxy : ", address(proxy));
+        console.log("logicV1 : ", address(logicV1));
     }
 }

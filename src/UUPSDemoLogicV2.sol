@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+import "forge-std/console.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 /**
  * @title UUPSDemoLogicV2
  * @notice UUPS 的第二版实现合约。
  */
 contract UUPSDemoLogicV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, ERC20Upgradeable {
-    string private constant TOKEN_NAME = "UUPS Demo Token";
-    string private constant TOKEN_SYMBOL = "UDT";
+    string private constant TOKEN_NAME = "UUPS_Token";
+    string private constant TOKEN_SYMBOL = "UUPS_USDT";
 
     /// @notice 当前业务实现版本，实际状态保存在代理地址。
     string public version;
@@ -46,14 +47,9 @@ contract UUPSDemoLogicV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         __ERC20_init(TOKEN_NAME, TOKEN_SYMBOL);
         __Ownable_init(initialOwner);
         version = "UUPSDemoLogicV2";
-    }
 
-    /**
-     * @notice 为已部署的旧版代理补初始化 ERC20 元数据。
-     * @dev 仅允许执行一次，适用于从未包含 ERC20 的旧版 UUPS 代理升级到 V2。
-     */
-    function initializeToken() external reinitializer(2) onlyOwner {
-        __ERC20_init(TOKEN_NAME, TOKEN_SYMBOL);
+        console.log("version : ", version);
+        console.log("address initialOwner : ", initialOwner);
     }
 
     /**

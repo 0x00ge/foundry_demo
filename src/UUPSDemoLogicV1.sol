@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+import "forge-std/console.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 /**
  * @title UUPSDemoLogicV1
@@ -22,8 +23,8 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
  * - 新版本只能在末尾追加状态，不能调整已有变量或继承顺序。
  */
 contract UUPSDemoLogicV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, ERC20Upgradeable {
-    string private constant TOKEN_NAME = "UUPS Demo Token";
-    string private constant TOKEN_SYMBOL = "UDT";
+    string private constant TOKEN_NAME = "UUPS_Token";
+    string private constant TOKEN_SYMBOL = "UUPS_USDT";
 
     /// @notice 当前业务实现版本，实际状态保存在代理地址。
     string public version;
@@ -57,6 +58,9 @@ contract UUPSDemoLogicV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         __ERC20_init(TOKEN_NAME, TOKEN_SYMBOL);
         __Ownable_init(initialOwner);
         version = "UUPSDemoLogicV1";
+
+        console.log("version : ", version);
+        console.log("initialize(address initialOwner) : ", initialOwner);
     }
 
     /**
